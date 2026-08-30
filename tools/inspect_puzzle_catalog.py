@@ -154,7 +154,10 @@ class DumpPuzzleText(CustomAction):
         )
         rows = []
         for result in detail.all_results if detail else []:
-            box = list(result.box)
+            result_box = getattr(result, "box", None)
+            if result_box is None:
+                continue
+            box = list(result_box)
             rows.append(
                 {
                     "text": getattr(result, "text", ""),

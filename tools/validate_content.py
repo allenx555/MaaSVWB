@@ -4,6 +4,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 from jsonschema import Draft202012Validator
 
@@ -19,7 +20,10 @@ SCHEMA_DIR = PROJECT_ROOT / "assets" / "schemas"
 
 def validate_document(data: object, schema_name: str, source: Path) -> None:
     schema = json.loads((SCHEMA_DIR / schema_name).read_text(encoding="utf-8"))
-    errors = sorted(Draft202012Validator(schema).iter_errors(data), key=lambda item: list(item.path))
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(cast(Any, data)),
+        key=lambda item: list(item.path),
+    )
     if errors:
         error = errors[0]
         location = ".".join(str(part) for part in error.absolute_path) or "<root>"

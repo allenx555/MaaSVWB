@@ -1,11 +1,15 @@
 {
-  "license": "MIT",
-  "engines": {
-    "node": ">=20.19.0"
-  },
-  "devDependencies": {
-    "@nekosu/maa-tools": "1.0.23",
-    "@types/node": "^25.5.2",
-    "prettier-plugin-multiline-arrays": "^3.0.6"
-  }
+    "license": "MIT",
+    "engines": {
+        "node": ">=20.19.0"
+    },
+    "scripts": {
+        "typecheck": "pyright"
+    },
+    "devDependencies": {
+        "@nekosu/maa-tools": "1.0.23",
+        "@types/node": "^25.5.2",
+        "prettier-plugin-multiline-arrays": "^3.0.6",
+        "pyright": "^1.1.413"
+    }
 }

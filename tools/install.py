@@ -118,9 +118,10 @@ def copy_distribution_license(
         ),
         None,
     )
-    if source is None or not Path(source).is_file():
+    source_path = Path(str(source)) if source is not None else None
+    if source_path is None or not source_path.is_file():
         raise RuntimeError(f"License file is missing from {package}: {expected_path}")
-    shutil.copy2(source, destination)
+    shutil.copy2(source_path, destination)
 
 
 if __name__ == "__main__":

@@ -85,6 +85,9 @@ jobs:
           python tools/generate_interface.py --check
           python -m compileall -q agent tools tests
 
+      - name: Run Python static type check
+        run: npx pyright --pythonpath "$(command -v python)"
+
       - name: Validate JSON Schema
         run: |
           python tools/validate_schema.py --schema-dir deps/tools --resource-dirs assets/resource --exclude-dirs assets/resource/solutions assets/resource/layouts --interface-files assets/interface.json

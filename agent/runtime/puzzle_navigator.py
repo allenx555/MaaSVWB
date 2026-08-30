@@ -47,6 +47,9 @@ class PuzzleNavigator:
                 if previous is not None:
                     old = previous.box
                     new = current.box
+                    if old is None or new is None:
+                        previous = current
+                        continue
                     old_center = (old.x + old.w // 2, old.y + old.h // 2)
                     new_center = (new.x + new.w // 2, new.y + new.h // 2)
                     if (
@@ -89,6 +92,8 @@ class PuzzleNavigator:
             return "completed"
 
         box = detail.box
+        if box is None:
+            return None
         if not self.backend.tap(box.x + box.w // 2, box.y + box.h // 2):
             return None
         time.sleep(LIST_CLICK_SETTLE_MS / 1000)

@@ -6,7 +6,8 @@ import unittest
 import numpy as np
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from typing import Any, cast
+from unittest.mock import ANY, MagicMock, call, patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -26,7 +27,7 @@ class _SuccessfulJob:
 
 
 class SolutionRuntimeTests(unittest.TestCase):
-    def make_backend(self, hits: list[bool]):
+    def make_backend(self, hits: list[bool]) -> tuple[Any, PuzzleNavigator, Any]:
         controller = SimpleNamespace(
             cached_image=object(),
             post_screencap=MagicMock(side_effect=lambda: _SuccessfulJob()),
@@ -41,7 +42,7 @@ class SolutionRuntimeTests(unittest.TestCase):
                 side_effect=[SimpleNamespace(hit=hit) for hit in hits]
             ),
         )
-        backend = MaaBackend(context)
+        backend = cast(Any, MaaBackend(cast(Any, context)))
         return backend, PuzzleNavigator(backend), controller
 
     @patch("runtime.runner.time.sleep")
@@ -62,11 +63,11 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertEqual(
             backend.verify.call_args_list,
             [
-                unittest.mock.call("识别_盘面解密列表"),
-                unittest.mock.call("识别_盘面解密奖励领取"),
-                unittest.mock.call("识别_盘面解密列表"),
-                unittest.mock.call("识别_盘面解密奖励领取"),
-                unittest.mock.call("识别_盘面解密列表"),
+                call("识别_盘面解密列表"),
+                call("识别_盘面解密奖励领取"),
+                call("识别_盘面解密列表"),
+                call("识别_盘面解密奖励领取"),
+                call("识别_盘面解密列表"),
             ],
         )
 
@@ -102,9 +103,11 @@ class SolutionRuntimeTests(unittest.TestCase):
             node_name="执行解法",
         )
 
-        self.assertTrue(ExecuteSolution().run(SimpleNamespace(), argv))
+        self.assertTrue(
+            ExecuteSolution().run(cast(Any, SimpleNamespace()), cast(Any, argv))
+        )
         run_solution.assert_called_once_with(
-            unittest.mock.ANY,
+            ANY,
             "puzzle_001",
             skip_completed=True,
             reset_before_execute=True,
@@ -171,8 +174,8 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertEqual(
             controller.post_click.call_args_list,
             [
-                unittest.mock.call(223, 475),
-                unittest.mock.call(1135, 500),
+                call(223, 475),
+                call(1135, 500),
             ],
         )
         controller.post_swipe.assert_not_called()
@@ -203,8 +206,8 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertEqual(
             controller.post_click.call_args_list,
             [
-                unittest.mock.call(201, 316),
-                unittest.mock.call(1135, 500),
+                call(201, 316),
+                call(1135, 500),
             ],
         )
 
@@ -304,9 +307,9 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertEqual(
             controller.post_click.call_args_list,
             [
-                unittest.mock.call(160, 110),
-                unittest.mock.call(160, 165),
-                unittest.mock.call(160, 237),
+                call(160, 110),
+                call(160, 165),
+                call(160, 237),
             ],
         )
         controller.post_swipe.assert_not_called()
@@ -339,7 +342,7 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(
             controller.post_click.call_args_list,
-            [unittest.mock.call(131, 251), unittest.mock.call(131, 251)],
+            [call(131, 251), call(131, 251)],
         )
 
     @patch("runtime.puzzle_navigator.time.sleep")

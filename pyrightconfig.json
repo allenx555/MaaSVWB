@@ -1,0 +1,21 @@
+{
+    "include": [
+        "agent",
+        "tests",
+        "tools"
+    ],
+    "exclude": [
+        "build",
+        "build-*",
+        "debug",
+        "install"
+    ],
+    "extraPaths": [
+        "agent",
+        "tools"
+    ],
+    "pythonVersion": "3.12",
+    "venvPath": ".",
+    "venv": ".venv",
+    "typeCheckingMode": "basic"
+}

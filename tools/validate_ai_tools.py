@@ -18,14 +18,16 @@ def require(condition: bool, message: str) -> None:
 
 
 def validate_https_url(value: object, field: str) -> str:
-    require(isinstance(value, str), f"{field} must be a string")
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be a string")
     parsed = urlparse(value)
     require(parsed.scheme == "https" and bool(parsed.netloc), f"{field} must be an HTTPS URL")
     return value
 
 
 def validate_relative_path(value: object, field: str) -> str:
-    require(isinstance(value, str) and bool(value), f"{field} must be a non-empty string")
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty string")
     path = PurePosixPath(value)
     require(not path.is_absolute() and ".." not in path.parts, f"{field} must stay inside the project")
     return value
@@ -36,7 +38,7 @@ def main() -> int:
     require(data.get("schema_version") == 1, "unsupported AI tools lock schema")
 
     skills = data.get("skills")
-    require(isinstance(skills, list) and skills, "at least one skill must be pinned")
+    require(isinstance(skills, list) and bool(skills), "at least one skill must be pinned")
     skill_names: set[str] = set()
     for index, skill in enumerate(skills):
         prefix = f"skills[{index}]"

@@ -30,6 +30,12 @@ Invoke-PythonStep tools/generate_interface.py --check
 Write-Host "[test] Python compile check"
 Invoke-PythonStep -m compileall -q agent tools tests
 
+Write-Host "[test] Python static type check"
+& npm run typecheck
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
 Write-Host "[test] MaaFramework schema validation"
 Invoke-PythonStep tools/validate_schema.py `
     --schema-dir deps/tools `

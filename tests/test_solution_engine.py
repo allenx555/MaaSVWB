@@ -335,12 +335,14 @@ class SolutionEngineTests(unittest.TestCase):
 
     def test_first_puzzle_uses_semantic_indexes(self) -> None:
         solution = SolutionRepository(self.solution_dir).load("puzzle_001")
+        navigation = solution.navigation
+        assert navigation is not None
         self.assertEqual(
-            solution.navigation["display_name"],
+            navigation["display_name"],
             "同时学习【守护】【突进】【疾驰】吧！",
         )
         self.assertEqual(
-            [item["display_name"] for item in solution.navigation["categories"]],
+            [item["display_name"] for item in navigation["categories"]],
             ["盘面解密", "指定系列", "基本能力①"],
         )
         backend = FakeBackend()
