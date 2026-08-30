@@ -7,8 +7,8 @@
 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 和 Avalonia 开发。
 
 MaaSVWB 通过 OCR 定位游戏内的教程或盘面解密条目，再用人工录入的语义解法完成
-出牌、指定目标和随从攻击。解法使用“第几张手牌”“第几个随从”等序号表达，避免把
-逐关坐标暴露给解法作者。
+出牌、指定目标、随从攻击、进化和护符启动等操作。解法使用“第几张手牌”“第几个
+随从”等序号表达，避免把逐关坐标暴露给解法作者。
 
 > [!IMPORTANT]
 > 当前所有识别和操作均以横屏 `1280 × 720` 为基准。使用前必须把模拟器分辨率设置为
@@ -18,7 +18,13 @@ MaaSVWB 通过 OCR 定位游戏内的教程或盘面解密条目，再用人工�
 
 - 已完成安卓模拟器连接、列表 OCR 导航、教程遮罩跳过和语义动作框架；
 - 已录入盘面解密与对战教程的完整目录，尚无脚本的条目会在 GUI 中显示为灰色；
-- 当前可执行解法：`puzzle_001`（同时学习【守护】【突进】【疾驰】吧！）；
+- 当前提供 5 项可执行盘面解密：
+    - 同时学习【守护】【突进】【疾驰】吧！；
+    - 学习／熟练运用巴巴洛丝皇家护卫吧！；
+    - 学习／熟练运用护符主教吧！；
+- 语义执行器支持出牌与指定目标、随从攻击、模式选择、普通进化、超进化、护符启动、
+  回合结束、能量点识别及额外能量点操作；
+- 开局换牌目前支持直接确认，自动选择换牌策略尚未实现；
 - “地域试炼”页签暂未开放。
 
 ## 用户使用
@@ -96,7 +102,8 @@ tools/                         环境、检查、调试和发布脚本
 
 1. 参考 `docs/examples/puzzle_demo.json`，在 `assets/resource/solutions/` 新建同 ID 的 JSON；
 2. 在对应的 `assets/catalog/*_catalog.json` 中加入目录项；
-3. 优先使用 `play_card`、`attack`、`select_target` 和 `end_turn` 等语义动作；
+3. 优先使用 `play_card`、`attack`、`select_choice`、`evolve`、`activate_amulet` 和
+   `end_turn` 等语义动作；
 4. 运行 `python tools/generate_interface.py` 更新通用 Project Interface；
 5. 执行 `tools/test.ps1`。
 
@@ -109,6 +116,7 @@ tools/                         环境、检查、调试和发布脚本
 ```powershell
 .\tools\test.ps1
 npm ci
+npm run typecheck
 npx @nekosu/maa-tools check
 .\.dotnet\dotnet.exe build gui\MaaSVWB.Desktop\MaaSVWB.Desktop.csproj
 ```
@@ -116,7 +124,7 @@ npx @nekosu/maa-tools check
 生成与 GitHub Release 一致的 Windows x64 发布目录：
 
 ```powershell
-.\tools\package.ps1 -Version v0.1.0 -Os win -RuntimeIdentifier win-x64
+.\tools\package.ps1 -Version v0.2.0 -Os win -RuntimeIdentifier win-x64
 ```
 
 成品位于 `install/`。桌面前端以单文件 `MaaSVWB.exe` 发布，资源、目录和内置运行器
