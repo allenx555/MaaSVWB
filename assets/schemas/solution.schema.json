@@ -64,7 +64,7 @@
                 "required": ["action"],
                 "properties": {
                     "action": {
-                        "enum": ["tap", "swipe", "wait", "key", "verify", "play_card", "attack", "select_target", "select_choice", "evolve", "activate_amulet", "end_turn", "skip_dialogue"]
+                        "enum": ["tap", "swipe", "wait", "key", "verify", "mulligan", "confirm_mulligan", "read_energy", "use_extra_energy", "play_card", "attack", "select_target", "select_choice", "evolve", "activate_amulet", "end_turn", "skip_dialogue"]
                     },
                     "label": { "type": "string" },
                     "point": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/point" }] },
@@ -74,6 +74,8 @@
                     "keycode": { "type": "integer", "minimum": 0 },
                     "hand_index": { "type": "integer", "minimum": 1 },
                     "hand_count": { "type": "integer", "minimum": 1 },
+                    "current_energy": { "type": "integer", "minimum": 0, "maximum": 10 },
+                    "max_energy": { "type": "integer", "minimum": 0, "maximum": 10 },
                     "attacker_index": { "type": "integer", "minimum": 1 },
                     "ally_count": { "type": "integer", "minimum": 1 },
                     "amulet_index": { "type": "integer", "minimum": 1 },

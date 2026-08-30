@@ -29,6 +29,7 @@ class FakeBackend:
             "ally": [],
             "enemy": [],
         }
+        self.energy_points: list[tuple[int, int] | None] = []
 
     def tap(self, x: int, y: int) -> bool:
         self.calls.append(("tap", x, y))
@@ -61,6 +62,9 @@ class FakeBackend:
 
     def read_hand_count(self) -> int | None:
         return self.hand_counts.pop(0) if self.hand_counts else None
+
+    def read_energy_points(self) -> tuple[int, int] | None:
+        return self.energy_points.pop(0) if self.energy_points else None
 
     def read_follower_count(self, side: str) -> int | None:
         counts = self.follower_counts[side]
@@ -128,7 +132,59 @@ class SolutionEngineTests(unittest.TestCase):
             ).execute(solution)
         self.assertEqual(backend.calls[0], ("tap", 1025, 665))
         self.assertEqual(backend.calls[1], ("swipe", 420, 665, 640, 430, 350))
-        self.assertEqual(backend.calls[-1], ("tap", 1170, 350))
+        self.assertEqual(backend.calls[-1], ("tap", 1170, 320))
+
+    def test_battle_setup_actions_use_calibrated_layout_and_read_energy(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "battle_setup",
+                "name": "battle setup",
+                "category": "tutorial",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {"action": "mulligan"},
+                    {"action": "confirm_mulligan"},
+                    {
+                        "action": "read_energy",
+                        "current_energy": 1,
+                        "max_energy": 1,
+                    },
+                    {"action": "use_extra_energy"},
+                    {"action": "end_turn"},
+                ],
+            }
+        )
+        backend = FakeBackend()
+        backend.energy_points = [(1, 1)]
+
+        SolutionExecutor(backend, logging.getLogger("test"), self.layout).execute(
+            solution
+        )
+
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 1150, 360),
+                ("tap", 1165, 515),
+                ("tap", 1170, 320),
+            ],
+        )
+
+    def test_read_energy_rejects_unexpected_value(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "energy_mismatch",
+                "name": "energy mismatch",
+                "category": "tutorial",
+                "reference_resolution": [1280, 720],
+                "steps": [{"action": "read_energy", "current_energy": 2}],
+            }
+        )
+        backend = FakeBackend()
+        backend.energy_points = [(1, 1)]
+
+        with self.assertRaisesRegex(SolutionError, "与预期 2 不一致"):
+            SolutionExecutor(backend, layout=self.layout).execute(solution)
 
     def test_change_postcondition_stops_failed_solution(self) -> None:
         solution = Solution.from_dict(

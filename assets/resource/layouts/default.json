@@ -12,7 +12,9 @@
         "ally_leader": [640, 620],
         "enemy_leader": [640, 70],
         "dialog_advance": [640, 635],
-        "end_turn": [1170, 350]
+        "mulligan_confirm": [1150, 360],
+        "extra_energy": [1165, 515],
+        "end_turn": [1170, 320]
     },
     "regions": {
         "hand_and_board": [240, 300, 800, 410],

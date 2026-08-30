@@ -62,6 +62,23 @@ class MaaBackend:
         LOGGER.info("实时手牌数量: %d", count)
         return count
 
+    def read_energy_points(self) -> tuple[int, int] | None:
+        """读取玩家侧能量点，返回（当前值，上限）。"""
+        detail = self.recognize("识别_当前能量点")
+        result = detail.best_result if detail and detail.hit else None
+        text = getattr(result, "text", "")
+        normalized = text.translate(str.maketrans({"I": "1", "l": "1", "|": "/"}))
+        match = re.search(r"(\d+)\s*/\s*(\d+)", normalized)
+        if match is None:
+            LOGGER.warning("未能读取当前能量点: %r", text)
+            return None
+        current, maximum = (int(value) for value in match.groups())
+        if not 0 <= current <= maximum <= 10:
+            LOGGER.warning("当前能量点超出支持范围: %d/%d", current, maximum)
+            return None
+        LOGGER.info("实时能量点: %d/%d", current, maximum)
+        return current, maximum
+
     def read_follower_count(self, side: str) -> int | None:
         """根据随从左下角蓝色攻击力数字，读取当前一侧的随从数量。"""
         rows = {

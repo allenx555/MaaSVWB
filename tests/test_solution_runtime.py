@@ -429,6 +429,16 @@ class SolutionRuntimeTests(unittest.TestCase):
 
         self.assertEqual(backend.read_hand_count(), 5)
 
+    def test_reads_current_energy_points_from_ocr(self) -> None:
+        backend, _navigator, _controller = self.make_backend([])
+        backend.context.run_recognition.side_effect = None
+        backend.context.run_recognition.return_value = SimpleNamespace(
+            hit=True,
+            best_result=SimpleNamespace(text="1 / 1"),
+        )
+
+        self.assertEqual(backend.read_energy_points(), (1, 1))
+
     def test_reads_follower_counts_from_blue_attack_stats(self) -> None:
         backend, _navigator, controller = self.make_backend([])
         frame = np.zeros((720, 1280, 3), dtype=np.uint8)

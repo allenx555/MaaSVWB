@@ -29,6 +29,8 @@ class ActionBackend(Protocol):
 
     def read_hand_count(self) -> int | None: ...
 
+    def read_energy_points(self) -> tuple[int, int] | None: ...
+
     def read_follower_count(self, side: str) -> int | None: ...
 
     def hand_is_expanded(
@@ -66,6 +68,10 @@ class SolutionExecutor:
         "wait",
         "key",
         "verify",
+        "mulligan",
+        "confirm_mulligan",
+        "read_energy",
+        "use_extra_energy",
         "play_card",
         "attack",
         "select_target",
@@ -204,6 +210,57 @@ class SolutionExecutor:
                 if attempt + 1 < retries:
                     time.sleep(interval / 1000)
             raise SolutionError(f"第 {index} 步识别校验失败: {node}")
+
+        if action == "mulligan":
+            # 先保留稳定的语义入口；换牌选择策略将在后续实现。
+            self.logger.info("开局换牌逻辑尚未实现，本次不选择任何卡牌")
+            return
+
+        if action == "confirm_mulligan":
+            layout = self._require_layout(index)
+            self._require_success(
+                self.backend.tap(*layout.fixed_point("mulligan_confirm")),
+                index,
+                action,
+            )
+            return
+
+        if action == "read_energy":
+            observed = self.backend.read_energy_points()
+            if observed is None:
+                raise SolutionError(f"第 {index} 步未能识别当前能量点")
+            current, maximum = observed
+            expected_current = step.get("current_energy")
+            expected_maximum = step.get("max_energy")
+            if expected_current is not None:
+                expected_current = self._non_negative_int(
+                    expected_current, "current_energy", index
+                )
+                if current != expected_current:
+                    raise SolutionError(
+                        f"第 {index} 步当前能量点为 {current}，"
+                        f"与预期 {expected_current} 不一致"
+                    )
+            if expected_maximum is not None:
+                expected_maximum = self._non_negative_int(
+                    expected_maximum, "max_energy", index
+                )
+                if maximum != expected_maximum:
+                    raise SolutionError(
+                        f"第 {index} 步能量点上限为 {maximum}，"
+                        f"与预期 {expected_maximum} 不一致"
+                    )
+            self.logger.info("当前能量点: %d/%d", current, maximum)
+            return
+
+        if action == "use_extra_energy":
+            layout = self._require_layout(index)
+            self._require_success(
+                self.backend.tap(*layout.fixed_point("extra_energy")),
+                index,
+                action,
+            )
+            return
 
         if action == "play_card":
             layout = self._require_layout(index)
@@ -427,6 +484,12 @@ class SolutionExecutor:
     def _positive_int(value: object, field: str, index: int) -> int:
         if not isinstance(value, int) or value < 1:
             raise SolutionError(f"第 {index} 步 {field} 必须是正整数")
+        return value
+
+    @staticmethod
+    def _non_negative_int(value: object, field: str, index: int) -> int:
+        if not isinstance(value, int) or value < 0:
+            raise SolutionError(f"第 {index} 步 {field} 必须是非负整数")
         return value
 
     def _require_layout(self, index: int) -> BoardLayout:

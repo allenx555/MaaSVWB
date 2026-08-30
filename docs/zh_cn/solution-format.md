@@ -263,6 +263,39 @@
 必须显式填写全部占位对象数。`detail_delay_ms`、`target_delay_ms` 和
 `activation_timeout_ms` 分别控制详情框等待、指定对象等待和启动按钮识别超时。
 
+### 开局换牌与能量点
+
+开局换牌先使用预留的 `mulligan` 动作，再点击“决定”。当前版本的 `mulligan`
+尚不选择任何卡牌，只保留后续实现换牌策略的语义入口：
+
+```json
+{
+    "action": "mulligan"
+},
+{
+    "action": "confirm_mulligan"
+}
+```
+
+`read_energy` 从结束回合按钮下方的玩家能量区域 OCR 读取“当前值/上限”。可以只
+记录识别结果，也可以填写预期值；识别失败或与预期不一致时会停止解法：
+
+```json
+{
+    "action": "read_energy",
+    "current_energy": 1,
+    "max_energy": 1
+}
+```
+
+后手需要使用额外能量点时使用：
+
+```json
+{
+    "action": "use_extra_energy"
+}
+```
+
 ### 结束回合
 
 ```json
