@@ -25,6 +25,10 @@ class FakeBackend:
         self.hand_counts: list[int | None] = []
         self.hand_expanded_states: list[bool | None] = []
         self.hand_probe_points: list[tuple[int, int]] = []
+        self.follower_counts: dict[str, list[int | None]] = {
+            "ally": [],
+            "enemy": [],
+        }
 
     def tap(self, x: int, y: int) -> bool:
         self.calls.append(("tap", x, y))
@@ -57,6 +61,10 @@ class FakeBackend:
 
     def read_hand_count(self) -> int | None:
         return self.hand_counts.pop(0) if self.hand_counts else None
+
+    def read_follower_count(self, side: str) -> int | None:
+        counts = self.follower_counts[side]
+        return counts.pop(0) if counts else None
 
     def hand_is_expanded(self, point) -> bool | None:
         self.hand_probe_points.append(point)
@@ -386,6 +394,42 @@ class SolutionEngineTests(unittest.TestCase):
             ],
         )
 
+    def test_activate_amulet_clicks_button_and_effect_target(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "activate_amulet",
+                "name": "activate amulet",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "activate_amulet",
+                        "amulet_index": 2,
+                        "ally_count": 3,
+                        "target": {
+                            "type": "enemy_follower",
+                            "index": 4,
+                            "count": 4,
+                        },
+                        "detail_delay_ms": 0,
+                        "target_delay_ms": 0,
+                    }
+                ],
+            }
+        )
+        backend = FakeBackend()
+
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 640, 465),
+                ("tap_recognition", "识别_启动按钮", 5000, 250),
+                ("tap", 880, 265),
+            ],
+        )
+
     def test_first_puzzle_uses_semantic_indexes(self) -> None:
         solution = SolutionRepository(self.solution_dir).load("puzzle_001")
         navigation = solution.navigation
@@ -449,6 +493,60 @@ class SolutionEngineTests(unittest.TestCase):
         backend = FakeBackend()
         SolutionExecutor(backend, layout=self.layout).execute(solution)
         self.assertEqual(backend.calls, [("swipe", 640, 465, 730, 265, 300)])
+
+    def test_attack_uses_calibrated_five_object_layout(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "five_object_attack",
+                "name": "five object attack",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "attack",
+                        "attacker_index": 1,
+                        "ally_count": 5,
+                        "target": {
+                            "type": "enemy_follower",
+                            "index": 5,
+                            "count": 5,
+                        },
+                    }
+                ],
+            }
+        )
+        backend = FakeBackend()
+
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+
+        self.assertEqual(backend.calls, [("swipe", 320, 465, 960, 265, 300)])
+
+    def test_attack_detects_missing_ally_and_target_counts(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "detected_counts",
+                "name": "detected counts",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "attack",
+                        "attacker_index": 1,
+                        "target": {
+                            "type": "enemy_follower",
+                            "index": 1,
+                        },
+                    }
+                ],
+            }
+        )
+        backend = FakeBackend()
+        backend.follower_counts["ally"] = [5]
+        backend.follower_counts["enemy"] = [1]
+
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+
+        self.assertEqual(backend.calls, [("swipe", 320, 465, 640, 265, 300)])
 
     def test_skip_dialogue_uses_global_layout_point(self) -> None:
         solution = Solution.from_dict(

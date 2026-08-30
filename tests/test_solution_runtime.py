@@ -429,6 +429,20 @@ class SolutionRuntimeTests(unittest.TestCase):
 
         self.assertEqual(backend.read_hand_count(), 5)
 
+    def test_reads_follower_counts_from_blue_attack_stats(self) -> None:
+        backend, _navigator, controller = self.make_backend([])
+        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        # Maa 截图为 BGR；用蓝色块模拟攻击力数字。相邻杂色峰会被抑制。
+        for x in (280, 440, 600, 760, 920):
+            frame[425:470, x - 8 : x + 8] = [200, 40, 30]
+        controller.cached_image = frame
+        self.assertEqual(backend.read_follower_count("ally"), 5)
+
+        frame = np.zeros_like(frame)
+        frame[250:295, 580:596] = [200, 40, 30]
+        controller.cached_image = frame
+        self.assertEqual(backend.read_follower_count("enemy"), 1)
+
     def test_hand_expansion_uses_highlight_pixels_at_probe_point(self) -> None:
         backend, _navigator, controller = self.make_backend([])
         frame = np.zeros((720, 1280, 3), dtype=np.uint8)

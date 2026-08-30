@@ -29,6 +29,8 @@ class ActionBackend(Protocol):
 
     def read_hand_count(self) -> int | None: ...
 
+    def read_follower_count(self, side: str) -> int | None: ...
+
     def hand_is_expanded(
         self, point: tuple[int, int]
     ) -> bool | None: ...
@@ -69,6 +71,7 @@ class SolutionExecutor:
         "select_target",
         "select_choice",
         "evolve",
+        "activate_amulet",
         "end_turn",
         "skip_dialogue",
     }
@@ -259,7 +262,9 @@ class SolutionExecutor:
             attacker_index = self._positive_int(
                 step.get("attacker_index"), "attacker_index", index
             )
-            ally_count = self._positive_int(step.get("ally_count"), "ally_count", index)
+            ally_count = self._field_count(
+                step.get("ally_count"), "ally", "ally_count", index
+            )
             source = layout.indexed_point("ally_followers", ally_count, attacker_index)
             target = self._target_point(layout, step.get("target"), index)
             duration = self._milliseconds(step.get("duration_ms", 300), "duration_ms", index)
@@ -326,6 +331,51 @@ class SolutionExecutor:
                 index,
                 action,
             )
+            self._hand_expanded = False
+            return
+
+        if action == "activate_amulet":
+            layout = self._require_layout(index)
+            amulet_index = self._positive_int(
+                step.get("amulet_index"), "amulet_index", index
+            )
+            ally_count = self._positive_int(
+                step.get("ally_count"), "ally_count", index
+            )
+            self._require_success(
+                self.backend.tap(
+                    *layout.indexed_point(
+                        "ally_followers", ally_count, amulet_index
+                    )
+                ),
+                index,
+                action,
+            )
+            detail_delay = self._milliseconds(
+                step.get("detail_delay_ms", 500), "detail_delay_ms", index
+            )
+            if detail_delay:
+                time.sleep(detail_delay / 1000)
+            self._require_success(
+                self.backend.tap_recognition(
+                    "识别_启动按钮",
+                    self._milliseconds(
+                        step.get("activation_timeout_ms", 5_000),
+                        "activation_timeout_ms",
+                        index,
+                    ),
+                ),
+                index,
+                action,
+            )
+            target = step.get("target")
+            if target is not None:
+                target_delay = self._milliseconds(
+                    step.get("target_delay_ms", 600), "target_delay_ms", index
+                )
+                if target_delay:
+                    time.sleep(target_delay / 1000)
+                self._tap_target(layout, target, index)
             self._hand_expanded = False
             return
 
@@ -401,6 +451,16 @@ class SolutionExecutor:
             )
         return observed
 
+    def _field_count(
+        self, value: object, side: str, field: str, index: int
+    ) -> int:
+        if value is not None:
+            return self._positive_int(value, field, index)
+        observed = self.backend.read_follower_count(side)
+        if observed is None:
+            raise SolutionError(f"第 {index} 步未能识别实时场上随从数量: {side}")
+        return observed
+
     def _observe_hand_expanded(
         self, layout: BoardLayout, hand_count: int
     ) -> bool | None:
@@ -430,7 +490,10 @@ class SolutionExecutor:
         }
         if target_type in indexed_targets:
             target_index = self._positive_int(target.get("index"), "target.index", index)
-            target_count = self._positive_int(target.get("count"), "target.count", index)
+            side = "enemy" if target_type == "enemy_follower" else "ally"
+            target_count = self._field_count(
+                target.get("count"), side, "target.count", index
+            )
             return layout.indexed_point(
                 indexed_targets[target_type], target_count, target_index
             )

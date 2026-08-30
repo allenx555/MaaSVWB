@@ -1,0 +1,133 @@
+{
+    "id": "spec_amulet_bishop_2_02",
+    "name": "熟练运用护符主教吧！",
+    "category": "puzzle",
+    "reference_resolution": [1280, 720],
+    "navigation": {
+        "display_name": "熟练运用护符主教吧！",
+        "name_pattern": ".*熟练运用.*护符主教.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "护符主教2",
+                "pattern": "护符主教(2|②)",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 20
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 3,
+            "label": "使用实时三张手牌中左起第一张随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1000
+        },
+        {
+            "action": "activate_amulet",
+            "amulet_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_follower",
+                "index": 4,
+                "count": 4
+            },
+            "label": "启动我方三个场上对象中的第二个护符并指定敌方第四个随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "hand_index": 2,
+            "hand_count": 2,
+            "label": "使用实时两张手牌中左起第二张",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 1,
+            "label": "使用实时唯一手牌",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 2000
+        },
+        {
+            "action": "evolve",
+            "evolution_type": "normal",
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 4
+            },
+            "label": "进化我方四个场上对象中的第二张卡牌（第一张随从）",
+            "detail_delay_ms": 1000,
+            "evolution_timeout_ms": 8000,
+            "change_roi": "battle_board",
+            "post_timeout_ms": 8000,
+            "after_ms": 5000
+        },
+        {
+            "action": "attack",
+            "attacker_index": 1,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1
+            },
+            "label": "我方第一张随从攻击敌方第一张随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1500
+        },
+        {
+            "action": "attack",
+            "attacker_index": 1,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1
+            },
+            "label": "我方第一张随从再次攻击敌方第一张随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1500
+        },
+        {
+            "action": "attack",
+            "attacker_index": 2,
+            "target": {
+                "type": "enemy_leader"
+            },
+            "label": "我方第二张随从攻击敌方主战者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1000
+        },
+        {
+            "action": "attack",
+            "attacker_index": 3,
+            "target": {
+                "type": "enemy_leader"
+            },
+            "label": "我方第三张随从攻击敌方主战者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        }
+    ]
+}

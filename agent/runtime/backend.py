@@ -62,6 +62,55 @@ class MaaBackend:
         LOGGER.info("实时手牌数量: %d", count)
         return count
 
+    def read_follower_count(self, side: str) -> int | None:
+        """根据随从左下角蓝色攻击力数字，读取当前一侧的随从数量。"""
+        rows = {
+            "enemy": (245, 310),
+            "ally": (405, 485),
+        }
+        if side not in rows:
+            raise ValueError(f"未知场上阵营: {side}")
+        frame = self.capture_frame()
+        if frame is None or frame.ndim < 3:
+            return None
+
+        y1, y2 = rows[side]
+        crop = frame[y1:y2].astype(np.float32)
+        blue = crop[:, :, 0]
+        green = crop[:, :, 1]
+        red = crop[:, :, 2]
+        stat_pixels = (
+            (blue > 90)
+            & (blue > red * 1.15)
+            & (blue > green * 1.05)
+        )
+        histogram = np.count_nonzero(stat_pixels, axis=0).astype(np.float32)
+        score = np.convolve(histogram, np.ones(17, dtype=np.float32), mode="same")
+        score[:250] = 0
+        score[1030:] = 0
+
+        peaks: list[int] = []
+        while len(peaks) < 5:
+            x = int(np.argmax(score))
+            if score[x] < 420:
+                break
+            peaks.append(x)
+            score[max(0, x - 75) : min(len(score), x + 76)] = 0
+        peaks.sort()
+        if not peaks:
+            LOGGER.warning(
+                "未识别到%s场上随从攻击力数字",
+                "敌方" if side == "enemy" else "我方",
+            )
+            return None
+        LOGGER.info(
+            "实时%s随从数量: %d（攻击力数字 x=%s）",
+            "敌方" if side == "enemy" else "我方",
+            len(peaks),
+            peaks,
+        )
+        return len(peaks)
+
     def hand_is_expanded(
         self, point: tuple[int, int]
     ) -> bool | None:
