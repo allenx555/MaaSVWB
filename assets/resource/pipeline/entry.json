@@ -1,0 +1,11 @@
+{
+    "执行解法": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ExecuteSolution",
+        "focus": true,
+        "custom_action_param": {
+            "solution": "puzzle_001"
+        }
+    }
+}

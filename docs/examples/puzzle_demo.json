@@ -1,0 +1,29 @@
+{
+  "id": "puzzle_demo",
+  "name": "盘面解密示例（布局待校准）",
+  "category": "puzzle",
+  "reference_resolution": [1280, 720],
+  "points": {},
+  "steps": [
+    {
+      "action": "play_card",
+      "hand_index": 1,
+      "hand_count": 5,
+      "label": "使用第一张手牌",
+      "after_ms": 1200
+    },
+    {
+      "action": "attack",
+      "attacker_index": 1,
+      "ally_count": 2,
+      "target": { "type": "enemy_leader" },
+      "label": "第一个随从攻击敌方主战者",
+      "after_ms": 1000
+    },
+    {
+      "action": "end_turn",
+      "label": "结束回合",
+      "after_ms": 1500
+    }
+  ]
+}

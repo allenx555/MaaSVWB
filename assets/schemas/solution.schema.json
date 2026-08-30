@@ -1,0 +1,102 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/allenx555/MaaSVWB/schemas/solution.schema.json",
+    "$defs": {
+        "point": {
+            "type": "array",
+            "prefixItems": [{ "type": "integer" }, { "type": "integer" }],
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "target": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+                "type": {
+                    "enum": ["enemy_leader", "ally_leader", "enemy_follower", "ally_follower"]
+                },
+                "index": { "type": "integer", "minimum": 1 },
+                "count": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+        }
+    },
+    "type": "object",
+    "required": ["id", "name", "category", "reference_resolution", "steps"],
+    "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["puzzle", "tutorial"] },
+        "reference_resolution": { "$ref": "#/$defs/point" },
+        "points": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/$defs/point" }
+        },
+        "navigation": {
+            "type": "object",
+            "required": ["display_name", "name_pattern"],
+            "properties": {
+                "display_name": { "type": "string", "minLength": 1 },
+                "name_pattern": { "type": "string", "minLength": 1 },
+                "entry_wait_ms": { "type": "integer", "minimum": 0, "maximum": 15000 },
+                "search_swipes": { "type": "integer", "minimum": 1, "maximum": 50 },
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["display_name", "pattern", "scope"],
+                        "properties": {
+                            "display_name": { "type": "string", "minLength": 1 },
+                            "pattern": { "type": "string", "minLength": 1 },
+                            "scope": { "enum": ["tab", "list"] }
+                        },
+                        "additionalProperties": false
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                    "action": {
+                        "enum": ["tap", "swipe", "wait", "key", "verify", "play_card", "attack", "select_target", "end_turn", "skip_dialogue"]
+                    },
+                    "label": { "type": "string" },
+                    "point": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/point" }] },
+                    "from": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/point" }] },
+                    "to": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/point" }] },
+                    "target": { "$ref": "#/$defs/target" },
+                    "keycode": { "type": "integer", "minimum": 0 },
+                    "hand_index": { "type": "integer", "minimum": 1 },
+                    "hand_count": { "type": "integer", "minimum": 1 },
+                    "attacker_index": { "type": "integer", "minimum": 1 },
+                    "ally_count": { "type": "integer", "minimum": 1 },
+                    "expand_hand": { "type": "boolean" },
+                    "pipeline_node": { "type": "string", "minLength": 1 },
+                    "wait_for": { "type": "string", "minLength": 1 },
+                    "wait_until_gone": { "type": "string", "minLength": 1 },
+                    "change_roi": { "type": "string", "minLength": 1 },
+                    "change_threshold": { "type": "number", "exclusiveMinimum": 0, "maximum": 255 },
+                    "duration_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "after_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "expand_delay_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "target_delay_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "interval_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "post_timeout_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "post_interval_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "change_settle_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "retries": { "type": "integer", "minimum": 1, "maximum": 20 },
+                    "max_clicks": { "type": "integer", "minimum": 1, "maximum": 100 },
+                    "stable_hits": { "type": "integer", "minimum": 1, "maximum": 5 }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}

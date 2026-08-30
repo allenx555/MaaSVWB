@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "items": [
+    { "id": "tutorial_spec_latest_barbaros", "name": "巴巴洛丝皇家护卫 · 最新弹", "series": "指定系列" },
+    { "id": "tutorial_spec_latest_sephie", "name": "赛菲巫师 · 最新弹", "series": "指定系列" },
+    { "id": "tutorial_spec_latest_antemaria", "name": "安缇马丽亚龙族 · 最新弹", "series": "指定系列" },
+    { "id": "tutorial_spec_latest_castorotte", "name": "卡特斯罗特超越者 · 最新弹", "series": "指定系列" },
+
+    { "id": "tutorial_spec_08_buff_elf", "name": "增益精灵 · 命运编年史（第8弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_08_spell_witch", "name": "法术巫师 · 命运编年史（第8弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_08_evolve_bishop", "name": "进化主教 · 命运编年史（第8弹）", "series": "指定系列" },
+
+    { "id": "tutorial_spec_07_dusty_elf", "name": "达斯特迪兹精灵 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_07_collaboration_royal", "name": "协作皇家护卫 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_07_earth_rite_witch", "name": "秘术巫师 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_07_ramp_dragon", "name": "跳费龙族 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_07_midrange_nightmare", "name": "中速梦魇 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_07_rodeo_bishop", "name": "罗德欧主教 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_07_artifact_nemesis", "name": "创造物超越者 · 弑神之安纳提玛（第7弹）", "series": "指定系列" },
+
+    { "id": "tutorial_spec_06_evolve_elf", "name": "进化精灵 · 天启契约（第6弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_06_enhance_royal", "name": "爆能强化皇家护卫 · 天启契约（第6弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_06_calugi_witch", "name": "卡卢基典瑟拉巫师 · 天启契约（第6弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_06_discard_dragon", "name": "弃牌龙族 · 天启契约（第6弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_06_amulet_bishop", "name": "护符主教 · 天启契约（第6弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_06_evolve_nemesis", "name": "进化超越者 · 天启契约（第6弹）", "series": "指定系列" },
+
+    { "id": "tutorial_spec_05_fairy_elf", "name": "妖精精灵 · 花醉游戏（第5弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_05_spell_witch", "name": "法术巫师 · 花醉游戏（第5弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_05_ramp_dragon", "name": "跳费龙族 · 花醉游戏（第5弹）", "series": "指定系列" },
+    { "id": "tutorial_spec_05_midrange_nightmare", "name": "中速梦魇 · 花醉游戏（第5弹）", "series": "指定系列" },
+
+    { "id": "tutorial_spec_evolution_essence_ougi", "name": "奥义", "series": "指定系列", "group": "进化的精髓", "sequence": 1 },
+    { "id": "tutorial_spec_evolution_essence_liberated_ougi", "name": "解放奥义", "series": "指定系列", "group": "进化的精髓", "sequence": 2, "requires": "tutorial_spec_evolution_essence_ougi" },
+    { "id": "tutorial_spec_evolution_essence_sandalphon", "name": "圣德芬的能力", "series": "指定系列", "group": "进化的精髓", "sequence": 3, "requires": "tutorial_spec_evolution_essence_liberated_ougi" },
+
+    { "id": "tutorial_unlimited_03_loot_royal", "name": "财宝皇家护卫 · 灾杰的继承者（第3弹）", "series": "无限制" },
+    { "id": "tutorial_unlimited_03_leo_witch", "name": "莱奥巫师 · 灾杰的继承者（第3弹）", "series": "无限制" },
+    { "id": "tutorial_unlimited_03_galmieux_dragon", "name": "嘉尔缪龙族 · 灾杰的继承者（第3弹）", "series": "无限制" },
+    { "id": "tutorial_unlimited_03_mode_nightmare", "name": "模式梦魇 · 灾杰的继承者（第3弹）", "series": "无限制" },
+    { "id": "tutorial_unlimited_03_marwynn_bishop", "name": "玛温主教 · 灾杰的继承者（第3弹）", "series": "无限制" },
+    { "id": "tutorial_unlimited_03_lishenna_nemesis", "name": "莉洁纳超越者 · 灾杰的继承者（第3弹）", "series": "无限制" },
+    { "id": "tutorial_unlimited_02_ward_bishop", "name": "守护主教 · 无限进化（第2弹）", "series": "无限制" },
+
+    { "id": "tutorial_basic_battle_basics_play_card", "name": "使用卡牌", "series": "基础系列", "group": "对战的基础", "sequence": 1 },
+    { "id": "tutorial_basic_battle_basics_follower_attack", "name": "随从攻击", "series": "基础系列", "group": "对战的基础", "sequence": 2, "requires": "tutorial_basic_battle_basics_play_card" },
+    { "id": "tutorial_basic_battle_basics_play_spell", "name": "使用法术", "series": "基础系列", "group": "对战的基础", "sequence": 3, "requires": "tutorial_basic_battle_basics_follower_attack" },
+    { "id": "tutorial_basic_battle_basics_mulligan", "name": "开局重新抽取", "series": "基础系列", "group": "对战的基础", "sequence": 4, "requires": "tutorial_basic_battle_basics_play_spell" },
+    { "id": "tutorial_basic_battle_basics_extra_energy", "name": "额外能量点", "series": "基础系列", "group": "对战的基础", "sequence": 5, "requires": "tutorial_basic_battle_basics_mulligan" },
+    { "id": "tutorial_basic_battle_basics_evolve", "name": "进化", "series": "基础系列", "group": "对战的基础", "sequence": 6, "requires": "tutorial_basic_battle_basics_extra_energy" },
+    { "id": "tutorial_basic_battle_basics_super_evolve", "name": "超进化", "series": "基础系列", "group": "对战的基础", "sequence": 7, "requires": "tutorial_basic_battle_basics_evolve" },
+
+    { "id": "tutorial_basic_01_fairy_elf", "name": "妖精精灵 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_officer_royal", "name": "士兵皇家护卫 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_spell_witch", "name": "法术巫师 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_earth_rite_witch", "name": "秘术巫师 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_ramp_dragon", "name": "跳费龙族 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_necromancy_nightmare", "name": "亡者梦魇 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_amulet_bishop", "name": "护符主教 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_puppet_nemesis", "name": "人偶超越者 · 传说揭幕（第1弹）", "series": "基础系列" },
+    { "id": "tutorial_basic_01_artifact_nemesis", "name": "创造物超越者 · 传说揭幕（第1弹）", "series": "基础系列" }
+  ]
+}

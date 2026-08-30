@@ -1,0 +1,93 @@
+<UserControl
+    x:Class="MaaSVWB.Desktop.Views.TaskTabView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="24" ColumnDefinitions="*,*" ColumnSpacing="18">
+    <Border Classes="card">
+      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+        <TextBlock Classes="sectionTitle" Text="{Binding Title}" />
+        <TextBlock Grid.Row="1" Classes="caption" Text="{Binding Description}" TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="2" Spacing="7" Margin="0,10,0,0">
+          <StackPanel IsVisible="{Binding ShowRunModeSelector}" Spacing="7">
+            <TextBlock FontWeight="SemiBold" Text="选择任务" />
+            <ComboBox
+                ItemsSource="{Binding RunModes}"
+                SelectedItem="{Binding SelectedRunMode}"
+                HorizontalAlignment="Stretch"
+                MinHeight="40" />
+          </StackPanel>
+          <StackPanel IsVisible="{Binding IsCatalogSolutionSelectorVisible}" Spacing="7" Margin="0,5,0,0">
+            <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="7">
+              <TextBlock FontWeight="SemiBold" Text="{Binding GroupSelectorLabel}" />
+              <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="{Binding SpecificSelectorLabel}" />
+              <ComboBox
+                  Grid.Row="1"
+                  ItemsSource="{Binding SolutionGroups}"
+                  SelectedItem="{Binding SelectedSolutionGroup}"
+                  HorizontalAlignment="Stretch"
+                  MinHeight="40" />
+              <ComboBox
+                  Grid.Row="1"
+                  Grid.Column="1"
+                  ItemsSource="{Binding VisibleSolutions}"
+                  SelectedItem="{Binding SelectedSolution}"
+                  HorizontalAlignment="Stretch"
+                  MinHeight="40">
+                <ComboBox.Styles>
+                  <Style Selector="ComboBoxItem">
+                    <Setter Property="IsEnabled" Value="{Binding HasScript}" />
+                  </Style>
+                </ComboBox.Styles>
+              </ComboBox>
+            </Grid>
+            <TextBlock Classes="caption" Text="解法 ID" />
+            <TextBlock Text="{Binding SelectedSolution.Id}" />
+          </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Row="3" Margin="0,18,0,0" Padding="12" Background="#F2F7F7" CornerRadius="7">
+          <StackPanel Spacing="7">
+            <TextBlock FontWeight="SemiBold" Foreground="#35565A" Text="执行说明" />
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding ExecutionHint}" />
+          </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="4" Spacing="10">
+          <Button Classes="primary" Command="{Binding RunCommand}" HorizontalAlignment="Stretch">
+            <TextBlock HorizontalAlignment="Center" Text="开始执行" />
+          </Button>
+          <Button Classes="secondary" Command="{Binding StopCommand}" HorizontalAlignment="Stretch">
+            <TextBlock HorizontalAlignment="Center" Text="停止任务" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Column="1" Classes="card">
+      <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Classes="sectionTitle" Text="运行日志" />
+            <TextBlock Classes="caption" Text="{Binding StatusText}" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="secondary" Command="{Binding ClearLogCommand}" Content="清空" />
+        </Grid>
+        <TextBox
+            x:Name="LogBox"
+            Grid.Row="1"
+            Classes="logBox"
+            Text="{Binding LogText}"
+            IsReadOnly="True"
+            AcceptsReturn="True"
+            TextWrapping="NoWrap"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            SelectionBrush="#3C8D91"
+            SelectionForegroundBrush="White"
+            TextChanged="LogBox_OnTextChanged" />
+        <TextBlock Grid.Row="2" Classes="caption" Text="输出同时保留在 MaaFramework 的 debug 日志中。" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

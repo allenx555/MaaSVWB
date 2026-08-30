@@ -1,0 +1,92 @@
+<Window
+    x:Class="MaaSVWB.Desktop.Views.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="clr-namespace:MaaSVWB.Desktop.Views"
+    Title="MaaSVWB"
+    Width="1120"
+    Height="760"
+    MinWidth="900"
+    MinHeight="620"
+    WindowStartupLocation="CenterScreen">
+  <Grid RowDefinitions="72,*">
+    <Border Background="White" BorderBrush="#DDE3EA" BorderThickness="0,0,0,1" Padding="24,12">
+      <Grid ColumnDefinitions="Auto,32,Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock FontSize="21" FontWeight="Bold" Foreground="#2F6F73" Text="MaaSVWB" />
+          <TextBlock Classes="caption" Text="影之诗：超凡世界助手" />
+        </StackPanel>
+        <Border Grid.Column="1" Width="1" Height="36" Background="#DDE3EA" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+          <TextBlock Classes="caption" Text="安卓模拟器" />
+          <ComboBox Width="230"
+                    ItemsSource="{Binding Devices}"
+                    SelectedItem="{Binding DeviceSerial}" />
+        </StackPanel>
+        <TextBlock Grid.Column="4" VerticalAlignment="Center" Foreground="#607079" Text="{Binding StatusText}" />
+        <Button Grid.Column="5" Classes="secondary" Command="{Binding RefreshDevicesCommand}" Content="刷新设备" />
+        <Button Grid.Column="6" Classes="primary" Command="{Binding TestConnectionCommand}" Content="测试连接" />
+      </Grid>
+    </Border>
+
+    <TabControl Grid.Row="1" Classes="mainTabs">
+      <TabItem Header="盘面解密">
+        <views:TaskTabView DataContext="{Binding Puzzle}" />
+      </TabItem>
+      <TabItem Header="对战教程">
+        <views:TaskTabView DataContext="{Binding Tutorial}" />
+      </TabItem>
+      <TabItem Header="地域试炼" IsEnabled="False">
+        <Grid>
+          <Border Classes="card" Width="430" Padding="38" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+              <TextBlock FontSize="25" HorizontalAlignment="Center" Text="地域试炼" />
+              <TextBlock Foreground="#89949C" HorizontalAlignment="Center" Text="功能规划中，暂不可用" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </TabItem>
+      <TabItem Header="设置">
+        <ScrollViewer>
+          <Grid Margin="24" ColumnDefinitions="*,340" ColumnSpacing="18">
+            <Border Classes="card">
+              <StackPanel Spacing="14">
+                <TextBlock Classes="sectionTitle" Text="运行环境" />
+                <TextBlock Classes="caption" Text="修改后点击保存；开发环境默认使用项目中的 .venv。" />
+
+                <TextBlock Margin="0,10,0,0" FontWeight="SemiBold" Text="项目目录" />
+                <TextBox Text="{Binding ProjectRoot}" />
+
+                <TextBlock FontWeight="SemiBold" Text="自动化运行程序（Runner / Python）" />
+                <TextBox Text="{Binding PythonPath}" />
+
+                <TextBlock FontWeight="SemiBold" Text="ADB 可执行文件" />
+                <TextBox Text="{Binding AdbPath}" />
+
+                <TextBlock FontWeight="SemiBold" Text="设备序列号" />
+                <TextBox Text="{Binding DeviceSerial}" />
+
+                <CheckBox IsChecked="{Binding SaveDraw}"
+                          Content="保存识别调试图（debug/vision）" />
+
+                <Button Classes="primary" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left" Content="保存设置" />
+              </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Classes="card">
+              <StackPanel Spacing="10">
+                <TextBlock Classes="sectionTitle" Text="关于" />
+                <TextBlock FontSize="16" FontWeight="SemiBold" Text="MaaSVWB Desktop" />
+                <TextBlock Classes="caption" TextWrapping="Wrap"
+                           Text="基于 Avalonia 构建的 MaaFramework 桌面前端。任务逻辑仍由 Python Agent 与资源配置提供。" />
+                <Border Height="1" Margin="0,8" Background="#E5E9ED" />
+                <TextBlock Classes="caption" TextWrapping="Wrap"
+                           Text="设置保存在当前 Windows 用户的 AppData/Roaming/MaaSVWB/settings.json。" />
+              </StackPanel>
+            </Border>
+          </Grid>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>

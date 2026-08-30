@@ -1,0 +1,12 @@
+{
+    "Default": {
+        "rate_limit": 500,
+        "timeout": 20000,
+        "pre_delay": 100,
+        "post_delay": 100
+    },
+    "OCR": {
+        "recognition": "OCR",
+        "threshold": 0.3
+    }
+}

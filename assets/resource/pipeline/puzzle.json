@@ -1,0 +1,64 @@
+{
+    "识别_盘面解密列表": {
+        "recognition": "OCR",
+        "roi": [70, 20, 230, 55],
+        "expected": [
+            "盘面解密",
+            "盘面解谜",
+            "盤面解密",
+            "盤面解謎"
+        ],
+        "threshold": 0.3
+    },
+    "识别_盘面解密名称": {
+        "recognition": "OCR",
+        "roi": [55, 190, 490, 410],
+        "expected": ".+",
+        "threshold": 0.3,
+        "order_by": "Vertical"
+    },
+    "识别_盘面解密完成标记": {
+        "recognition": "OCR",
+        "roi": [55, 190, 105, 80],
+        "expected": ["完成"],
+        "threshold": 0.3
+    },
+    "识别_盘面解密已领取": {
+        "recognition": "OCR",
+        "roi": [390, 190, 130, 80],
+        "expected": ["已领取", "已領取"],
+        "threshold": 0.3
+    },
+    "识别_盘面解密标签": {
+        "recognition": "OCR",
+        "roi": [25, 85, 550, 110],
+        "expected": ".+",
+        "threshold": 0.3,
+        "order_by": "Vertical"
+    },
+    "识别_盘面解密类别": {
+        "recognition": "OCR",
+        "roi": [45, 190, 500, 410],
+        "expected": ".+",
+        "threshold": 0.3,
+        "order_by": "Vertical"
+    },
+    "识别_盘面解密决定": {
+        "recognition": "OCR",
+        "roi": [1030, 390, 210, 210],
+        "expected": [
+            "决定",
+            "決定"
+        ],
+        "threshold": 0.3
+    },
+    "识别_盘面解密决定可用": {
+        "recognition": "ColorMatch",
+        "roi": [1060, 425, 150, 150],
+        "method": 4,
+        "lower": [0, 70, 120],
+        "upper": [120, 255, 255],
+        "count": 4000,
+        "connected": false
+    }
+}

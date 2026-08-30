@@ -1,0 +1,93 @@
+name: check
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - ".github/workflows/check.yml"
+      - ".agents/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "assets/**"
+      - "agent/**"
+      - "docs/**"
+      - "gui/**"
+      - "tests/**"
+      - "tools/**"
+      - "**.py"
+      - "**.cs"
+      - "**.axaml"
+      - "package*.json"
+      - "requirements*.txt"
+      - "maatools.config.mts"
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      - ".github/workflows/check.yml"
+      - ".agents/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "assets/**"
+      - "agent/**"
+      - "docs/**"
+      - "gui/**"
+      - "tests/**"
+      - "tools/**"
+      - "**.py"
+      - "**.cs"
+      - "**.axaml"
+      - "package*.json"
+      - "requirements*.txt"
+      - "maatools.config.mts"
+  workflow_dispatch:
+
+jobs:
+  resource:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Use .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run maa-checker
+        run: |
+          npm ci
+          npx @nekosu/maa-tools check
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run Python tests and content validation
+        run: |
+          python -m unittest discover -s tests -v
+          python tools/validate_content.py
+          python tools/validate_ai_tools.py
+          python tools/validate_versions.py
+          python tools/generate_interface.py --check
+          python -m compileall -q agent tools tests
+
+      - name: Validate JSON Schema
+        run: |
+          python tools/validate_schema.py --schema-dir deps/tools --resource-dirs assets/resource --exclude-dirs assets/resource/solutions assets/resource/layouts --interface-files assets/interface.json
+
+      - name: Build desktop GUI
+        run: dotnet build gui/MaaSVWB.Desktop/MaaSVWB.Desktop.csproj

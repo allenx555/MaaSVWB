@@ -1,0 +1,24 @@
+{
+    "schema_version": 1,
+    "skills": [
+        {
+            "name": "maaframework",
+            "source": "https://github.com/Kutius/maaframework-skills",
+            "commit": "f3d316a6d3810f6fc07504bea526ed44264cc8ce",
+            "subdirectory": "skills/maaframework",
+            "install_path": ".agents/skills/maaframework",
+            "license_note": "Generated from MaaFramework v5.x documentation; preserve upstream attribution and MaaFramework LGPL-3.0 notice."
+        }
+    ],
+    "mcp_servers": [
+        {
+            "name": "MaaMCP",
+            "source": "https://github.com/MAA-AI/MaaMCP",
+            "package": "maa-mcp",
+            "version": "1.2.3",
+            "commit": "ff2d2b52f275bb4b547c9420e142f817ac1ed429",
+            "license": "AGPL-3.0-or-later",
+            "optional": true
+        }
+    ]
+}

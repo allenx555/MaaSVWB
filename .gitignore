@@ -1,0 +1,77 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vs/
+.idea/
+*.suo
+*.user
+*.rsuser
+*.code-workspace
+.env
+.env.*
+!.env.example
+*.tmp
+
+# Keep the shared VS Code configuration only
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# .NET and Avalonia
+.dotnet/
+**/bin/
+**/obj/
+TestResults/
+artifacts/
+*.binlog
+*.pdb
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Build and release output
+/build/
+/build-*/
+/install/
+/publish/
+
+# MaaFramework runtime output
+/config/
+/debug/
+*.dmp
+/NVIDIA Corporation/
+
+# Downloaded OCR model
+/assets/resource/model/ocr/
+
+# Downloaded AI development tools
+/.agents/skills/maaframework/
+/.ai-tools/
+
+# Downloaded MaaFramework schema dependencies: keep only schemas
+/deps/*
+!/deps/tools/
+/deps/tools/*
+!/deps/tools/*.schema.json
+
+# Tool-specific temporary images
+/tools/ImageCropper/**/*.png

@@ -1,0 +1,26 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/allenx555/MaaSVWB/schemas/catalog.schema.json",
+    "type": "object",
+    "required": ["version", "items"],
+    "properties": {
+        "version": { "const": 1 },
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "name", "series"],
+                "properties": {
+                    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+                    "name": { "type": "string", "minLength": 1 },
+                    "series": { "type": "string", "minLength": 1 },
+                    "group": { "type": "string", "minLength": 1 },
+                    "sequence": { "type": "integer", "minimum": 1 },
+                    "requires": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}

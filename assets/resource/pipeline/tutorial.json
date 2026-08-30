@@ -1,0 +1,52 @@
+{
+    "识别_教程对话继续箭头": {
+        "recognition": "ColorMatch",
+        "roi": [930, 280, 60, 50],
+        "method": 4,
+        "lower": [220, 220, 220],
+        "upper": [255, 255, 255],
+        "count": 20,
+        "connected": true
+    },
+    "识别_教程好的按钮": {
+        "recognition": "ColorMatch",
+        "roi": [510, 590, 260, 80],
+        "method": 4,
+        "lower": [0, 100, 130],
+        "upper": [150, 255, 255],
+        "count": 1500,
+        "connected": true
+    },
+    "识别_教程可跳过提示": {
+        "recognition": "Or",
+        "any_of": [
+            "识别_教程对话继续箭头",
+            "识别_教程好的按钮"
+        ]
+    },
+    "识别_教程主战者框顶部": {
+        "recognition": "ColorMatch",
+        "roi": [15, 20, 425, 4],
+        "method": 4,
+        "lower": [105, 90, 50],
+        "upper": [240, 225, 195],
+        "count": 700,
+        "connected": true
+    },
+    "识别_教程主战者框左侧": {
+        "recognition": "ColorMatch",
+        "roi": [20, 20, 4, 90],
+        "method": 4,
+        "lower": [105, 90, 50],
+        "upper": [240, 225, 195],
+        "count": 150,
+        "connected": true
+    },
+    "识别_教程主战者框可操作": {
+        "recognition": "And",
+        "all_of": [
+            "识别_教程主战者框顶部",
+            "识别_教程主战者框左侧"
+        ]
+    }
+}

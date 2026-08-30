@@ -1,0 +1,51 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/allenx555/MaaSVWB/schemas/layout.schema.json",
+    "$defs": {
+        "point": {
+            "type": "array",
+            "prefixItems": [{ "type": "integer" }, { "type": "integer" }],
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "rect": {
+            "type": "array",
+            "prefixItems": [
+                { "type": "integer" },
+                { "type": "integer" },
+                { "type": "integer", "minimum": 1 },
+                { "type": "integer", "minimum": 1 }
+            ],
+            "minItems": 4,
+            "maxItems": 4
+        }
+    },
+    "type": "object",
+    "required": ["reference_resolution", "fixed", "indexed"],
+    "properties": {
+        "reference_resolution": { "$ref": "#/$defs/point" },
+        "description": { "type": "string" },
+        "fixed": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/$defs/point" }
+        },
+        "regions": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/$defs/rect" }
+        },
+        "indexed": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "patternProperties": {
+                    "^[1-9][0-9]*$": {
+                        "type": "array",
+                        "items": { "$ref": "#/$defs/point" }
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}

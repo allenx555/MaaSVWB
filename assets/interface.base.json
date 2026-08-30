@@ -1,0 +1,34 @@
+{
+    "interface_version": 2,
+    "name": "MaaSVWB",
+    "label": "影之诗：超凡世界助手",
+    "description": "基于 MaaFramework 的安卓模拟器教程与盘面解密自动操作工具。",
+    "license": "MIT",
+    "github": "https://github.com/allenx555/MaaSVWB",
+    "welcome": "请将游戏和 MaaFramework 截图输出设为 1280×720。桌面前端会从目录自动显示已录入的解法。",
+    "version": "0.1.0",
+    "controller": [
+        {
+            "name": "安卓模拟器",
+            "type": "Adb",
+            "display_short_side": 720
+        }
+    ],
+    "resource": [
+        {
+            "name": "默认资源",
+            "path": [
+                "./resource"
+            ],
+            "controller": [
+                "安卓模拟器"
+            ]
+        }
+    ],
+    "agent": {
+        "child_exec": "python",
+        "child_args": [
+            "./agent/main.py"
+        ]
+    }
+}
