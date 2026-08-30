@@ -1,0 +1,125 @@
+{
+    "id": "spec_barbaros_02",
+    "name": "熟练运用巴巴洛丝皇家护卫吧！",
+    "category": "puzzle",
+    "reference_resolution": [1280, 720],
+    "navigation": {
+        "display_name": "熟练运用巴巴洛丝皇家护卫吧！",
+        "name_pattern": ".*熟练运用.*巴巴洛丝皇家护卫.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "巴巴洛丝皇家护卫",
+                "pattern": "巴巴洛丝皇家护卫",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 20
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 5,
+            "label": "使用实时五张手牌中左起第一张随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 2000
+        },
+        {
+            "action": "play_card",
+            "hand_index": 2,
+            "hand_count": 4,
+            "target": {
+                "type": "ally_follower",
+                "index": 3,
+                "count": 4
+            },
+            "label": "使用实时四张手牌中左起第二张，以我方四个对象中的第三个随从为目标",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 2000
+        },
+        {
+            "action": "attack",
+            "attacker_index": 3,
+            "ally_count": 4,
+            "target": {
+                "type": "enemy_follower",
+                "index": 3,
+                "count": 3
+            },
+            "label": "我方四个对象中的第三个随从攻击敌方第三个随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 3,
+            "label": "使用实时三张手牌中左起第一张",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 2,
+            "label": "使用实时两张手牌中左起第一张（行动前重新确认手牌展开状态）",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "select_choice",
+            "choice_index": 2,
+            "choice_count": 2,
+            "label": "在两个模式中选择第二个选项",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 1,
+            "label": "使用实时一张手牌中左起第一张",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "select_choice",
+            "choice_index": 2,
+            "choice_count": 2,
+            "label": "在两个模式中选择第二个选项",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "attack",
+            "attacker_index": 1,
+            "ally_count": 1,
+            "target": {
+                "type": "enemy_leader"
+            },
+            "label": "重新计数后，我方唯一随从攻击敌方主战者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        }
+    ]
+}

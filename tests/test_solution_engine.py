@@ -22,6 +22,9 @@ class FakeBackend:
     def __init__(self) -> None:
         self.calls: list[tuple] = []
         self.change_success = True
+        self.hand_counts: list[int | None] = []
+        self.hand_expanded_states: list[bool | None] = []
+        self.hand_probe_points: list[tuple[int, int]] = []
 
     def tap(self, x: int, y: int) -> bool:
         self.calls.append(("tap", x, y))
@@ -51,6 +54,17 @@ class FakeBackend:
 
     def capture_frame(self):
         return object()
+
+    def read_hand_count(self) -> int | None:
+        return self.hand_counts.pop(0) if self.hand_counts else None
+
+    def hand_is_expanded(self, point) -> bool | None:
+        self.hand_probe_points.append(point)
+        return (
+            self.hand_expanded_states.pop(0)
+            if self.hand_expanded_states
+            else None
+        )
 
     def wait_changed(
         self, reference, roi, timeout_ms: int, threshold: float, settle_ms: int
@@ -151,6 +165,171 @@ class SolutionEngineTests(unittest.TestCase):
                 ("tap", 1025, 665),
                 ("swipe", 640, 665, 640, 430, 350),
                 ("tap", 550, 265),
+            ],
+        )
+
+    def test_targeted_spell_reexpands_hand_before_next_card(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "targeted_spell_then_card",
+                "name": "targeted spell then card",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "play_card",
+                        "hand_index": 1,
+                        "hand_count": 2,
+                        "target_delay_ms": 0,
+                        "target": {
+                            "type": "enemy_follower",
+                            "index": 1,
+                            "count": 1,
+                        },
+                    },
+                    {
+                        "action": "play_card",
+                        "hand_index": 2,
+                        "hand_count": 2,
+                        "expand_delay_ms": 0,
+                    },
+                ],
+            }
+        )
+        backend = FakeBackend()
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 1025, 665),
+                ("swipe", 600, 665, 640, 430, 350),
+                ("tap", 640, 265),
+                ("tap", 1025, 665),
+                ("swipe", 750, 665, 640, 430, 350),
+            ],
+        )
+
+    def test_live_hand_count_mismatch_stops_solution(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "live_hand_count",
+                "name": "live hand count",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "play_card",
+                        "hand_index": 2,
+                        "hand_count": 3,
+                        "expand_delay_ms": 0,
+                    }
+                ],
+            }
+        )
+        backend = FakeBackend()
+        backend.hand_counts = [4]
+        backend.hand_expanded_states = [False]
+        with self.assertRaisesRegex(SolutionError, "与脚本预期的 3 张不一致"):
+            SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(backend.calls, [])
+
+    def test_collapsed_hand_is_reexpanded_after_ordinary_card(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "ordinary_card_collapses_hand",
+                "name": "ordinary card collapses hand",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {"action": "play_card", "hand_index": 1, "hand_count": 2},
+                    {"action": "play_card", "hand_index": 1, "hand_count": 1},
+                ],
+            }
+        )
+        backend = FakeBackend()
+        backend.hand_expanded_states = [False, False]
+        with patch("solution_engine.executor.time.sleep"):
+            SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 1025, 665),
+                ("swipe", 600, 665, 640, 430, 350),
+                ("tap", 1025, 665),
+                ("swipe", 675, 665, 640, 430, 350),
+            ],
+        )
+
+    def test_rightmost_card_uses_leftmost_expansion_probe(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "rightmost_card_probe",
+                "name": "rightmost card probe",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "play_card",
+                        "hand_index": 5,
+                        "hand_count": 5,
+                        "expand_delay_ms": 0,
+                    }
+                ],
+            }
+        )
+        backend = FakeBackend()
+        backend.hand_counts = [5]
+        backend.hand_expanded_states = [False]
+
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+
+        self.assertEqual(backend.hand_probe_points, [(420, 665)])
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 1025, 665),
+                ("swipe", 860, 665, 640, 430, 350),
+            ],
+        )
+
+    def test_choice_uses_semantic_index_and_reexpands_hand(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "choice_then_card",
+                "name": "choice then card",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "play_card",
+                        "hand_index": 1,
+                        "hand_count": 2,
+                        "expand_delay_ms": 0,
+                    },
+                    {
+                        "action": "select_choice",
+                        "choice_index": 2,
+                        "choice_count": 2,
+                    },
+                    {
+                        "action": "play_card",
+                        "hand_index": 1,
+                        "hand_count": 1,
+                        "expand_delay_ms": 0,
+                    },
+                ],
+            }
+        )
+        backend = FakeBackend()
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 1025, 665),
+                ("swipe", 600, 665, 640, 430, 350),
+                ("tap", 770, 415),
+                ("tap", 1025, 665),
+                ("swipe", 675, 665, 640, 430, 350),
             ],
         )
 

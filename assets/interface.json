@@ -63,6 +63,28 @@
                             }
                         }
                     }
+                },
+                {
+                    "name": "spec_barbaros_01",
+                    "label": "学习巴巴洛丝皇家护卫吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_barbaros_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_barbaros_02",
+                    "label": "熟练运用巴巴洛丝皇家护卫吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_barbaros_02"
+                            }
+                        }
+                    }
                 }
             ]
         }

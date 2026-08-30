@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 
 import numpy as np
@@ -44,6 +45,55 @@ class MaaBackend:
         if not capture.succeeded:
             return None
         return np.array(self.controller.cached_image, copy=True)
+
+    def read_hand_count(self) -> int | None:
+        """从盘面左下角牌堆状态栏读取当前手牌数。"""
+        detail = self.recognize("识别_当前手牌数量")
+        result = detail.best_result if detail and detail.hit else None
+        text = getattr(result, "text", "")
+        match = re.search(r"\d+", text)
+        if match is None:
+            LOGGER.warning("未能读取当前手牌数量: %r", text)
+            return None
+        count = int(match.group())
+        if not 0 <= count <= 9:
+            LOGGER.warning("当前手牌数量超出支持范围: %d", count)
+            return None
+        LOGGER.info("实时手牌数量: %d", count)
+        return count
+
+    def hand_is_expanded(
+        self, point: tuple[int, int]
+    ) -> bool | None:
+        """根据可出牌卡牌的青绿色外框判断手牌是否已在中央展开。"""
+        frame = self.capture_frame()
+        if frame is None or frame.ndim < 3:
+            return None
+        center_x, center_y = point
+        x = center_x - 55
+        y = center_y - 105
+        width = 110
+        height = 125
+        if x < 0 or y < 0 or x + width > frame.shape[1] or y + height > frame.shape[0]:
+            return None
+        crop = frame[y : y + height, x : x + width]
+        blue = crop[:, :, 0].astype(np.float32)
+        green = crop[:, :, 1].astype(np.float32)
+        red = crop[:, :, 2].astype(np.float32)
+        highlighted = (
+            (green > 140)
+            & (blue > 100)
+            & (green > red * 1.15)
+            & (blue > red * 0.9)
+        )
+        pixels = int(np.count_nonzero(highlighted))
+        expanded = pixels >= 100
+        LOGGER.info(
+            "实时手牌展开状态: %s（高亮像素=%d）",
+            "已展开" if expanded else "已收拢",
+            pixels,
+        )
+        return expanded
 
     def category_expanded(self, category_box) -> bool | None:
         """根据类别行右侧的上/下箭头判断手风琴是否展开。"""
@@ -176,6 +226,9 @@ class MaaBackend:
             return bool(self.context.tasker.stopping)
         except (AttributeError, RuntimeError):
             return False
+
+    def is_stopping(self) -> bool:
+        return self._stopping()
 
     def skip_dialogue(
         self,

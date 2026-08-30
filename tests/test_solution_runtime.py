@@ -14,6 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 
 from runtime.backend import MaaBackend  # noqa: E402
 from runtime.puzzle_navigator import PuzzleNavigator  # noqa: E402
+from runtime.runner import reset_puzzle_for_debug, wait_for_puzzle_list  # noqa: E402
 from actions.execute_solution import ExecuteSolution  # noqa: E402
 
 
@@ -43,13 +44,60 @@ class SolutionRuntimeTests(unittest.TestCase):
         backend = MaaBackend(context)
         return backend, PuzzleNavigator(backend), controller
 
+    @patch("runtime.runner.time.sleep")
+    def test_reward_screen_is_dismissed_before_waiting_for_puzzle_list(
+        self, _sleep: MagicMock
+    ) -> None:
+        backend = MagicMock()
+        backend.is_stopping.return_value = False
+        backend.verify.side_effect = [False, True, False, False, True]
+        backend.tap.return_value = True
+
+        result = wait_for_puzzle_list(
+            backend, (640, 650), timeout_ms=5_000, interval_ms=100
+        )
+
+        self.assertTrue(result)
+        backend.tap.assert_called_once_with(640, 650)
+        self.assertEqual(
+            backend.verify.call_args_list,
+            [
+                unittest.mock.call("识别_盘面解密列表"),
+                unittest.mock.call("识别_盘面解密奖励领取"),
+                unittest.mock.call("识别_盘面解密列表"),
+                unittest.mock.call("识别_盘面解密奖励领取"),
+                unittest.mock.call("识别_盘面解密列表"),
+            ],
+        )
+
+    @patch("runtime.runner.time.sleep")
+    def test_reward_screen_is_retried_until_it_disappears(
+        self, _sleep: MagicMock
+    ) -> None:
+        backend = MagicMock()
+        backend.is_stopping.return_value = False
+        backend.verify.side_effect = [False, True, False, True, True]
+        backend.tap.return_value = True
+
+        result = wait_for_puzzle_list(
+            backend, (640, 650), timeout_ms=5_000, interval_ms=100
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(backend.tap.call_count, 2)
+        backend.tap.assert_called_with(640, 650)
+
     @patch("actions.execute_solution.run_solution")
     def test_shared_custom_action_forwards_batch_option(
         self, run_solution: MagicMock
     ) -> None:
         argv = SimpleNamespace(
             custom_action_param=json.dumps(
-                {"solution": "puzzle_001", "skip_completed": True}
+                {
+                    "solution": "puzzle_001",
+                    "skip_completed": True,
+                    "reset_before_execute": True,
+                }
             ),
             node_name="执行解法",
         )
@@ -59,7 +107,21 @@ class SolutionRuntimeTests(unittest.TestCase):
             unittest.mock.ANY,
             "puzzle_001",
             skip_completed=True,
+            reset_before_execute=True,
         )
+
+    @patch("runtime.runner.time.sleep")
+    def test_debug_reset_uses_layout_point(self, sleep: MagicMock) -> None:
+        backend = MagicMock()
+        backend.tap.return_value = True
+        layout = MagicMock()
+        layout.fixed_point.return_value = (105, 220)
+
+        reset_puzzle_for_debug(backend, layout)
+
+        layout.fixed_point.assert_called_once_with("puzzle_reset")
+        backend.tap.assert_called_once_with(105, 220)
+        sleep.assert_called_once_with(1.2)
 
     @patch("runtime.backend.time.sleep")
     def test_already_operable_does_not_click(self, _sleep: MagicMock) -> None:
@@ -353,6 +415,28 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertTrue(backend.category_expanded(category_box))
         controller.cached_image = arrow_image(False)
         self.assertFalse(backend.category_expanded(category_box))
+
+    def test_reads_current_hand_count_from_ocr(self) -> None:
+        backend, _navigator, _controller = self.make_backend([])
+        backend.context.run_recognition.side_effect = None
+        backend.context.run_recognition.return_value = SimpleNamespace(
+            hit=True,
+            best_result=SimpleNamespace(text="5"),
+        )
+
+        self.assertEqual(backend.read_hand_count(), 5)
+
+    def test_hand_expansion_uses_highlight_pixels_at_probe_point(self) -> None:
+        backend, _navigator, controller = self.make_backend([])
+        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        # Maa 截图是 BGR；在探测区放入足量青绿色高亮像素。
+        frame[570:590, 410:430] = [200, 200, 50]
+        controller.cached_image = frame
+
+        self.assertTrue(backend.hand_is_expanded((420, 665)))
+
+        controller.cached_image = np.zeros_like(frame)
+        self.assertFalse(backend.hand_is_expanded((420, 665)))
 
     @patch("runtime.backend.time.sleep")
     def test_newly_entered_puzzle_accepts_stable_ready_without_overlay(

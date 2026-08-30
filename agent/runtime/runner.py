@@ -41,16 +41,51 @@ def find_resource_root() -> Path:
     raise RuntimeError("找不到 MaaSVWB resource 目录")
 
 
+def wait_for_puzzle_list(
+    backend: MaaBackend,
+    reward_continue: tuple[int, int],
+    timeout_ms: int = 60_000,
+    interval_ms: int = 500,
+) -> bool:
+    """等待返回盘面解密列表，并处理首次通关的奖励领取页。"""
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        if backend.is_stopping():
+            return False
+        if backend.verify("识别_盘面解密列表"):
+            return True
+        if backend.verify("识别_盘面解密奖励领取"):
+            print("[完成] 检测到首次通关奖励，点击继续", flush=True)
+            if not backend.tap(*reward_continue):
+                return False
+            time.sleep(1)
+            continue
+        time.sleep(interval_ms / 1000)
+    return False
+
+
+def reset_puzzle_for_debug(backend: MaaBackend, layout: BoardLayout) -> None:
+    """从关卡内点击左侧重置按钮；只供显式调试流程调用。"""
+    print("[调试] 点击左侧重置按钮", flush=True)
+    if not backend.tap(*layout.fixed_point("puzzle_reset")):
+        raise SolutionError("调试重置盘面失败")
+    time.sleep(1_200 / 1000)
+
+
 def run_solution(
     context: Context,
     solution_id: str,
     *,
     skip_completed: bool = False,
+    reset_before_execute: bool = False,
 ) -> bool:
     solution = SolutionRepository.for_project(PROJECT_ROOT).load(solution_id)
     layout = BoardLayout.load(find_resource_root() / "layouts" / "default.json")
     backend = MaaBackend(context)
     navigator = PuzzleNavigator(backend)
+
+    if reset_before_execute and not backend.verify("识别_盘面解密列表"):
+        reset_puzzle_for_debug(backend, layout)
 
     entered_from_list = False
     if solution.navigation is not None:
@@ -148,6 +183,8 @@ def run_solution(
 
     if solution.navigation is not None:
         print("[完成] 解法动作已执行，等待返回盘面解密列表", flush=True)
-        if not backend.wait_recognition("识别_盘面解密列表", 60_000):
+        if not wait_for_puzzle_list(
+            backend, layout.fixed_point("puzzle_reward_continue")
+        ):
             raise SolutionError("解密完成后 60 秒内未返回盘面解密列表")
     return True

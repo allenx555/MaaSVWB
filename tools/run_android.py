@@ -29,6 +29,7 @@ from runtime.session import choose_device, connect_controller, create_tasker  # 
 
 
 REFERENCE_RESOLUTION = (1280, 720)
+STOP_WAIT_TIMEOUT_SECONDS = 5
 
 
 def configure_utf8_stdio() -> None:
@@ -58,6 +59,11 @@ def parse_args() -> argparse.Namespace:
         "--skip-completed",
         action="store_true",
         help="从列表启动时，若目标题目同时显示完成和已领取则跳过",
+    )
+    parser.add_argument(
+        "--reset-before-execute",
+        action="store_true",
+        help="调试用：当前在关卡内时先点击左侧重置按钮",
     )
     parser.add_argument("--stop-file", type=Path, help="前端用于请求优雅停止的控制文件")
     parser.add_argument(
@@ -104,16 +110,49 @@ def start_stop_monitor(
             if not stop_file.is_file():
                 continue
             stop_event.set()
-            emit_event("control", "收到停止请求，正在停止 Maa 任务", state="stopping")
-            try:
-                tasker.post_stop().wait()
-            except Exception as error:  # Maa stop failure is still reported to the parent process.
-                emit_event("control", f"Maa 停止请求失败：{error}", state="failed")
+            request_task_stop(tasker, "收到停止请求，正在停止 Maa 任务")
             return
 
     thread = threading.Thread(target=monitor, name="maasvwb-stop-monitor", daemon=True)
     thread.start()
     return thread
+
+
+def request_task_stop(
+    tasker: Tasker,
+    message: str,
+    timeout_seconds: float | None = None,
+) -> bool:
+    """发送统一的 Maa 停止请求，并可选地限制等待时间。"""
+    emit_event("control", message, state="stopping")
+    try:
+        stop_job = tasker.post_stop()
+        if timeout_seconds is None:
+            stop_job.wait()
+            return True
+        deadline = time.monotonic() + timeout_seconds
+        while not stop_job.done and time.monotonic() < deadline:
+            time.sleep(0.05)
+        return bool(stop_job.done)
+    except Exception as error:
+        emit_event("control", f"Maa 停止请求失败：{error}", state="failed")
+        return False
+
+
+def wait_task_interruptibly(tasker: Tasker, task, poll_interval: float = 0.1) -> bool:
+    """等待 Maa 任务，同时让 Windows 主线程能够及时处理 Ctrl+C。"""
+    try:
+        while not task.done:
+            time.sleep(poll_interval)
+        return True
+    except KeyboardInterrupt:
+        print("\n[停止] 收到 Ctrl+C，正在停止 Maa 任务", flush=True)
+        request_task_stop(
+            tasker,
+            "收到 Ctrl+C，正在停止 Maa 任务",
+            STOP_WAIT_TIMEOUT_SECONDS,
+        )
+        return False
 
 
 def main() -> int:
@@ -150,6 +189,7 @@ def main() -> int:
             "custom_action_param": {
                 "solution": solution_id,
                 "skip_completed": args.skip_completed,
+                "reset_before_execute": args.reset_before_execute,
             }
         }
     }
@@ -159,7 +199,10 @@ def main() -> int:
     try:
         print(f"即将执行: {args.task} / {solution_id}")
         emit_event("run", f"即将执行：{args.task} / {solution_id}", state="starting")
-        task = tasker.post_task("执行解法", override).wait()
+        task = tasker.post_task("执行解法", override)
+        if not wait_task_interruptibly(tasker, task):
+            emit_event("run", "任务已由用户停止", state="stopped")
+            return 130
         if stop_event.is_set():
             emit_event("run", "任务已由用户停止", state="stopped")
             return 130

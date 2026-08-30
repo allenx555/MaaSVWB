@@ -10,6 +10,22 @@
         ],
         "threshold": 0.3
     },
+    "识别_盘面解密奖励领取": {
+        "recognition": "OCR",
+        "roi": [500, 20, 280, 70],
+        "expected": [
+            "领取结果",
+            "領取結果"
+        ],
+        "threshold": 0.3
+    },
+    "识别_当前手牌数量": {
+        "recognition": "OCR",
+        "roi": [62, 666, 35, 35],
+        "expected": "^[0-9]+$",
+        "threshold": 0.15,
+        "only_rec": true
+    },
     "识别_盘面解密名称": {
         "recognition": "OCR",
         "roi": [55, 190, 490, 410],

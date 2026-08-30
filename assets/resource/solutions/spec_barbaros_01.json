@@ -1,0 +1,59 @@
+{
+    "id": "spec_barbaros_01",
+    "name": "学习巴巴洛丝皇家护卫吧！",
+    "category": "puzzle",
+    "reference_resolution": [1280, 720],
+    "navigation": {
+        "display_name": "学习巴巴洛丝皇家护卫吧！",
+        "name_pattern": ".*学习.*巴巴洛丝皇家护卫.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "巴巴洛丝皇家护卫",
+                "pattern": "巴巴洛丝皇家护卫",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 20
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            },
+            "label": "使用第一张手牌的法术，以对方第一个随从为目标",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        },
+        {
+            "action": "play_card",
+            "hand_index": 2,
+            "hand_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            },
+            "label": "使用第二张手牌的法术，以对方第一个随从为目标",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        }
+    ]
+}

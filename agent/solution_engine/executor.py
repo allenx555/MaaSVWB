@@ -27,6 +27,12 @@ class ActionBackend(Protocol):
 
     def capture_frame(self) -> Any | None: ...
 
+    def read_hand_count(self) -> int | None: ...
+
+    def hand_is_expanded(
+        self, point: tuple[int, int]
+    ) -> bool | None: ...
+
     def wait_changed(
         self,
         reference: Any,
@@ -57,6 +63,7 @@ class SolutionExecutor:
         "play_card",
         "attack",
         "select_target",
+        "select_choice",
         "end_turn",
         "skip_dialogue",
     }
@@ -193,13 +200,24 @@ class SolutionExecutor:
         if action == "play_card":
             layout = self._require_layout(index)
             hand_index = self._positive_int(step.get("hand_index"), "hand_index", index)
-            hand_count = self._positive_int(step.get("hand_count"), "hand_count", index)
+            authored_hand_count = self._positive_int(
+                step.get("hand_count"), "hand_count", index
+            )
+            hand_count = self._validate_hand_count(
+                authored_hand_count, hand_index, index
+            )
             expand_hand = step.get("expand_hand")
             if expand_hand is not None and not isinstance(expand_hand, bool):
                 raise SolutionError(f"第 {index} 步 expand_hand 必须是布尔值")
-            should_expand = (
-                not self._hand_expanded if expand_hand is None else expand_hand
-            )
+            observed_expanded = self._observe_hand_expanded(layout, hand_count)
+            if expand_hand is None:
+                should_expand = (
+                    not observed_expanded
+                    if observed_expanded is not None
+                    else not self._hand_expanded
+                )
+            else:
+                should_expand = expand_hand
             if should_expand:
                 self._require_success(
                     self.backend.tap(*layout.fixed_point("hand_expand")),
@@ -211,7 +229,7 @@ class SolutionExecutor:
                 )
                 if expand_delay:
                     time.sleep(expand_delay / 1000)
-            # 出牌后手牌保持展开；显式 false 也表示调用方确认它已经展开。
+            # 普通出牌后手牌保持展开；显式 false 也表示调用方确认它已经展开。
             self._hand_expanded = True
             source = layout.indexed_point("hand", hand_count, hand_index)
             destination = layout.fixed_point("play_area")
@@ -227,6 +245,8 @@ class SolutionExecutor:
                 if delay:
                     time.sleep(delay / 1000)
                 self._tap_target(layout, target, index)
+                # 指定目标完成后游戏会把手牌收回右下角；下一次出牌需重新展开。
+                self._hand_expanded = False
             return
 
         if action == "attack":
@@ -254,6 +274,22 @@ class SolutionExecutor:
         if action == "select_target":
             layout = self._require_layout(index)
             self._tap_target(layout, step.get("target"), index)
+            return
+
+        if action == "select_choice":
+            layout = self._require_layout(index)
+            choice_index = self._positive_int(
+                step.get("choice_index"), "choice_index", index
+            )
+            choice_count = self._positive_int(
+                step.get("choice_count"), "choice_count", index
+            )
+            point = layout.indexed_point("choices", choice_count, choice_index)
+            self._require_success(
+                self.backend.tap(*point), index, "select_choice"
+            )
+            # 模式选择完成后回到盘面，手牌会收回右下角。
+            self._hand_expanded = False
             return
 
         if action == "end_turn":
@@ -310,6 +346,31 @@ class SolutionExecutor:
         if self.layout is None:
             raise SolutionError(f"第 {index} 步需要加载棋盘布局")
         return self.layout
+
+    def _validate_hand_count(
+        self, authored_count: int, hand_index: int, index: int
+    ) -> int:
+        observed = self.backend.read_hand_count()
+        if observed is None:
+            return authored_count
+        if observed < hand_index:
+            raise SolutionError(
+                f"第 {index} 步实时手牌只有 {observed} 张，无法选择第 {hand_index} 张"
+            )
+        if observed != authored_count:
+            raise SolutionError(
+                f"第 {index} 步实时手牌为 {observed} 张，与脚本预期的 "
+                f"{authored_count} 张不一致；上一动作可能未成功结算"
+            )
+        return observed
+
+    def _observe_hand_expanded(
+        self, layout: BoardLayout, hand_count: int
+    ) -> bool | None:
+        # 始终探测最左侧展开卡位，避免右侧收拢牌扇与目标牌位重叠而误判。
+        return self.backend.hand_is_expanded(
+            layout.indexed_point("hand", hand_count, 1)
+        )
 
     def _tap_target(self, layout: BoardLayout, target: object, index: int) -> None:
         point = self._target_point(layout, target, index)

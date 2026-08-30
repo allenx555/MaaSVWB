@@ -24,6 +24,9 @@ class ExecuteSolution(CustomAction):
                 context,
                 solution_id,
                 skip_completed=bool(params.get("skip_completed", False)),
+                reset_before_execute=bool(
+                    params.get("reset_before_execute", False)
+                ),
             )
             print(f"自定义动作结束: {solution_id}", flush=True)
             return True
