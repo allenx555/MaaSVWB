@@ -2,6 +2,7 @@
     "interface_version": 2,
     "name": "MaaSVWB",
     "label": "影之诗：超凡世界助手",
+    "icon": "./icon.png",
     "description": "基于 MaaFramework 的安卓模拟器教程与盘面解密自动操作工具。",
     "license": "MIT",
     "github": "https://github.com/allenx555/MaaSVWB",

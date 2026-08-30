@@ -1,7 +1,24 @@
+<!-- markdownlint-disable -->
+
+<div align="center">
+
+<img alt="MaaSVWB Logo" src="./assets/icon.png" width="256" height="256" />
+
 # MaaSVWB
 
-[![check](https://github.com/allenx555/MaaSVWB/actions/workflows/check.yml/badge.svg)](https://github.com/allenx555/MaaSVWB/actions/workflows/check.yml)
-[![release](https://img.shields.io/github/v/release/allenx555/MaaSVWB?display_name=tag)](https://github.com/allenx555/MaaSVWB/releases)
+<div>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&amp;logoColor=white" />
+  <img alt=".NET" src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&amp;logoColor=white" />
+  <a href="https://github.com/allenx555/MaaSVWB/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/github/license/allenx555/MaaSVWB" /></a>
+</div>
+<div>
+  <a href="https://github.com/allenx555/MaaSVWB/releases"><img alt="release" src="https://img.shields.io/github/v/release/allenx555/MaaSVWB?display_name=tag" /></a>
+  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet" />
+</div>
+
+</div>
+
+<!-- markdownlint-restore -->
 
 《影之诗：超凡世界》安卓模拟器自动操作工具，基于
 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 和 Avalonia 开发。
@@ -19,9 +36,9 @@ MaaSVWB 通过 OCR 定位游戏内的教程或盘面解密条目，再用人工�
 - 已完成安卓模拟器连接、列表 OCR 导航、教程遮罩跳过和语义动作框架；
 - 已录入盘面解密与对战教程的完整目录，尚无脚本的条目会在 GUI 中显示为灰色；
 - 当前提供 5 项可执行盘面解密：
-    - 同时学习【守护】【突进】【疾驰】吧！；
-    - 学习／熟练运用巴巴洛丝皇家护卫吧！；
-    - 学习／熟练运用护符主教吧！；
+  - 同时学习【守护】【突进】【疾驰】吧！；
+  - 学习／熟练运用巴巴洛丝皇家护卫吧！；
+  - 学习／熟练运用护符主教吧！；
 - 语义执行器支持出牌与指定目标、随从攻击、模式选择、普通进化、超进化、护符启动、
   回合结束、能量点识别及额外能量点操作；
 - 开局换牌目前支持直接确认，自动选择换牌策略尚未实现；
@@ -142,3 +159,7 @@ Avalonia 等第三方组件适用各自许可证，详见
 [第三方许可声明](./docs/release/THIRD_PARTY_NOTICES.md)。
 
 使用自动化工具前，请确认符合游戏服务条款并自行承担风险。
+
+MaaSVWB 是非官方开源项目，与《影之诗：超凡世界》的开发商、发行商及运营方无关。
+相关游戏名称、角色形象及美术素材的权利归原权利人所有；项目的 MIT License 不对这些
+第三方内容作出授权。

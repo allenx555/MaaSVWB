@@ -53,6 +53,10 @@ def install_resource():
 
 def install_chores():
     shutil.copy2(
+        working_dir / "assets" / "icon.png",
+        install_path / "icon.png",
+    )
+    shutil.copy2(
         working_dir / "docs" / "release" / "README.md",
         install_path / "README.md",
     )
