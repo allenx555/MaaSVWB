@@ -185,6 +185,28 @@
 
 选择完成后手牌会收回右下角，下一次 `play_card` 会自动重新展开。
 
+### 进化或超进化
+
+`evolve` 会先按当前场上对象数量点击目标随从，再在动态高度的卡牌详情框中
+OCR 查找对应按钮并点击，因此不需要为不同卡牌填写进化按钮坐标：
+
+```json
+{
+    "action": "evolve",
+    "evolution_type": "super",
+    "target": {
+        "type": "ally_follower",
+        "index": 1,
+        "count": 1
+    }
+}
+```
+
+`evolution_type` 可取 `normal`（进化）或 `super`（超进化），默认是 `normal`。
+`target.count` 仍是该动作执行前我方场上所有占用卡位的对象总数。
+可用 `detail_delay_ms` 调整点击随从后等待详情框出现的时间，使用
+`evolution_timeout_ms` 调整等待进化按钮识别成功的最长时间。
+
 ### 结束回合
 
 ```json

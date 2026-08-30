@@ -442,6 +442,20 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertFalse(backend.hand_is_expanded((420, 665)))
 
     @patch("runtime.backend.time.sleep")
+    def test_tap_recognition_clicks_detected_box_center(
+        self, _sleep: MagicMock
+    ) -> None:
+        backend, _navigator, controller = self.make_backend([])
+        backend.context.run_recognition.side_effect = None
+        backend.context.run_recognition.return_value = SimpleNamespace(
+            hit=True,
+            box=SimpleNamespace(x=240, y=330, w=180, h=55),
+        )
+
+        self.assertTrue(backend.tap_recognition("识别_超进化按钮", 5000))
+        controller.post_click.assert_called_once_with(330, 357)
+
+    @patch("runtime.backend.time.sleep")
     def test_newly_entered_puzzle_accepts_stable_ready_without_overlay(
         self, _sleep: MagicMock
     ) -> None:

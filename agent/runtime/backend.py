@@ -95,6 +95,24 @@ class MaaBackend:
         )
         return expanded
 
+    def tap_recognition(
+        self,
+        pipeline_node: str,
+        timeout_ms: int,
+        interval_ms: int = 250,
+    ) -> bool:
+        """等待识别框出现并点击其中心。"""
+        deadline = time.monotonic() + timeout_ms / 1000
+        while time.monotonic() < deadline:
+            if self._stopping():
+                return False
+            detail = self.recognize(pipeline_node)
+            if detail and detail.hit and detail.box is not None:
+                box = detail.box
+                return self.tap(box.x + box.w // 2, box.y + box.h // 2)
+            time.sleep(interval_ms / 1000)
+        return False
+
     def category_expanded(self, category_box) -> bool | None:
         """根据类别行右侧的上/下箭头判断手风琴是否展开。"""
         frame = self.capture_frame()

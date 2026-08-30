@@ -33,6 +33,10 @@ class ActionBackend(Protocol):
         self, point: tuple[int, int]
     ) -> bool | None: ...
 
+    def tap_recognition(
+        self, pipeline_node: str, timeout_ms: int, interval_ms: int = 250
+    ) -> bool: ...
+
     def wait_changed(
         self,
         reference: Any,
@@ -64,6 +68,7 @@ class SolutionExecutor:
         "attack",
         "select_target",
         "select_choice",
+        "evolve",
         "end_turn",
         "skip_dialogue",
     }
@@ -289,6 +294,38 @@ class SolutionExecutor:
                 self.backend.tap(*point), index, "select_choice"
             )
             # 模式选择完成后回到盘面，手牌会收回右下角。
+            self._hand_expanded = False
+            return
+
+        if action == "evolve":
+            layout = self._require_layout(index)
+            evolution_type = step.get("evolution_type", "normal")
+            evolution_nodes = {
+                "normal": "识别_进化按钮",
+                "super": "识别_超进化按钮",
+            }
+            if evolution_type not in evolution_nodes:
+                raise SolutionError(
+                    f"第 {index} 步 evolution_type 必须是 normal 或 super"
+                )
+            self._tap_target(layout, step.get("target"), index)
+            detail_delay = self._milliseconds(
+                step.get("detail_delay_ms", 500), "detail_delay_ms", index
+            )
+            if detail_delay:
+                time.sleep(detail_delay / 1000)
+            self._require_success(
+                self.backend.tap_recognition(
+                    evolution_nodes[evolution_type],
+                    self._milliseconds(
+                        step.get("evolution_timeout_ms", 5_000),
+                        "evolution_timeout_ms",
+                        index,
+                    ),
+                ),
+                index,
+                action,
+            )
             self._hand_expanded = False
             return
 

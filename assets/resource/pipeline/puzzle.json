@@ -26,6 +26,18 @@
         "threshold": 0.15,
         "only_rec": true
     },
+    "识别_进化按钮": {
+        "recognition": "OCR",
+        "roi": [150, 180, 330, 250],
+        "expected": "^进化$|^進化$",
+        "threshold": 0.3
+    },
+    "识别_超进化按钮": {
+        "recognition": "OCR",
+        "roi": [150, 180, 330, 250],
+        "expected": "^超进化$|^超進化$",
+        "threshold": 0.3
+    },
     "识别_盘面解密名称": {
         "recognition": "OCR",
         "roi": [55, 190, 490, 410],

@@ -64,7 +64,7 @@
                 "required": ["action"],
                 "properties": {
                     "action": {
-                        "enum": ["tap", "swipe", "wait", "key", "verify", "play_card", "attack", "select_target", "select_choice", "end_turn", "skip_dialogue"]
+                        "enum": ["tap", "swipe", "wait", "key", "verify", "play_card", "attack", "select_target", "select_choice", "evolve", "end_turn", "skip_dialogue"]
                     },
                     "label": { "type": "string" },
                     "point": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/point" }] },
@@ -78,6 +78,7 @@
                     "ally_count": { "type": "integer", "minimum": 1 },
                     "choice_index": { "type": "integer", "minimum": 1 },
                     "choice_count": { "type": "integer", "minimum": 1 },
+                    "evolution_type": { "enum": ["normal", "super"] },
                     "expand_hand": { "type": "boolean" },
                     "pipeline_node": { "type": "string", "minLength": 1 },
                     "wait_for": { "type": "string", "minLength": 1 },
@@ -88,6 +89,8 @@
                     "after_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
                     "expand_delay_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
                     "target_delay_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "detail_delay_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
+                    "evolution_timeout_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
                     "interval_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
                     "post_timeout_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
                     "post_interval_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },

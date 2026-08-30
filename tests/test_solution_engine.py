@@ -66,6 +66,14 @@ class FakeBackend:
             else None
         )
 
+    def tap_recognition(
+        self, pipeline_node: str, timeout_ms: int, interval_ms: int = 250
+    ) -> bool:
+        self.calls.append(
+            ("tap_recognition", pipeline_node, timeout_ms, interval_ms)
+        )
+        return True
+
     def wait_changed(
         self, reference, roi, timeout_ms: int, threshold: float, settle_ms: int
     ) -> bool:
@@ -330,6 +338,51 @@ class SolutionEngineTests(unittest.TestCase):
                 ("tap", 770, 415),
                 ("tap", 1025, 665),
                 ("swipe", 675, 665, 640, 430, 350),
+            ],
+        )
+
+    def test_evolve_supports_normal_and_super_modes(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "evolution_modes",
+                "name": "evolution modes",
+                "category": "puzzle",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "evolve",
+                        "evolution_type": "normal",
+                        "target": {
+                            "type": "ally_follower",
+                            "index": 1,
+                            "count": 1,
+                        },
+                        "detail_delay_ms": 0,
+                    },
+                    {
+                        "action": "evolve",
+                        "evolution_type": "super",
+                        "target": {
+                            "type": "ally_follower",
+                            "index": 2,
+                            "count": 2,
+                        },
+                        "detail_delay_ms": 0,
+                    },
+                ],
+            }
+        )
+        backend = FakeBackend()
+
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+
+        self.assertEqual(
+            backend.calls,
+            [
+                ("tap", 640, 465),
+                ("tap_recognition", "识别_进化按钮", 5000, 250),
+                ("tap", 730, 465),
+                ("tap_recognition", "识别_超进化按钮", 5000, 250),
             ],
         )
 

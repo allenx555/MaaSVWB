@@ -1,0 +1,65 @@
+{
+    "id": "spec_amulet_bishop_2_01",
+    "name": "学习护符主教吧！",
+    "category": "puzzle",
+    "reference_resolution": [1280, 720],
+    "navigation": {
+        "display_name": "学习护符主教吧！",
+        "name_pattern": ".*学习.*护符主教.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "护符主教2",
+                "pattern": "护符主教(2|②)",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 20
+    },
+    "steps": [
+        {
+            "action": "evolve",
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            },
+            "label": "超进化我方唯一随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1500
+        },
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 1,
+            "label": "使用当前唯一手牌中的护符",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 1000
+        },
+        {
+            "action": "attack",
+            "attacker_index": 1,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_leader"
+            },
+            "label": "我方两个场上对象中的第一个随从攻击敌方主战者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 5000,
+            "after_ms": 500
+        }
+    ]
+}

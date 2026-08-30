@@ -85,6 +85,17 @@
                             }
                         }
                     }
+                },
+                {
+                    "name": "spec_amulet_bishop_2_01",
+                    "label": "学习护符主教吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_amulet_bishop_2_01"
+                            }
+                        }
+                    }
                 }
             ]
         }
