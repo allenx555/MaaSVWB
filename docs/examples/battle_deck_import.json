@@ -1,0 +1,25 @@
+{
+    "$schema": "../../assets/schemas/battle-deck-import.schema.json",
+    "schema_version": 1,
+    "id": "aggro_shadow_draft",
+    "name": "快鬼（导入示例）",
+    "description": "仅演示导入格式，不代表完整卡组或最终优先级。",
+    "cards": [
+        {
+            "ref": "10021110",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"],
+            "play_priority": 80,
+            "mulligan_keep": true,
+            "evolution_priority": 50
+        },
+        {
+            "ref": "10153310",
+            "copies": 3,
+            "default_target": "enemy_leader",
+            "allowed_targets": ["enemy_leader"],
+            "play_priority": 100
+        }
+    ]
+}

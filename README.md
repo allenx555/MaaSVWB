@@ -42,6 +42,8 @@ MaaSVWB 通过 OCR 定位游戏内的教程或盘面解密条目，再用人工�
 - 语义执行器支持出牌与指定目标、随从攻击、模式选择、普通进化、超进化、护符启动、
   回合结束、能量点识别及额外能量点操作；
 - 开局换牌目前支持直接确认，自动选择换牌策略尚未实现；
+- 已建立地域试炼 Battle Profile 接口，可校验用户自定义卡组、出牌优先级、固定组合、
+  目标及安全限制；盘面观察和实际对战循环尚待接入；
 - “地域试炼”页签暂未开放。
 
 ## 用户使用
@@ -100,6 +102,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\run_gui.ps1
 ```text
 agent/                         Python Custom Action 与语义解法执行器
 assets/
+  battle/                      卡牌注册表与内置对战策略
   catalog/                     GUI 展示的关卡目录、分组和前置关系
   resource/
     layouts/                   1280×720 统一语义布局
@@ -125,6 +128,12 @@ tools/                         环境、检查、调试和发布脚本
 5. 执行 `tools/test.ps1`。
 
 完整字段、导航配置和动作说明见[人工解法格式](./docs/zh_cn/solution-format.md)。
+
+地域试炼的用户卡组和决策偏好使用独立 Battle Profile，格式见
+[用户对战策略 JSON](./docs/zh_cn/battle-profile.md)。该配置不接受坐标、Pipeline 节点或
+任意可执行内容。开发者还可以使用 `tools/import_battle_deck.py` 从外部 `SVWBData`
+生成卡组限定注册表、策略草稿和 FeatureMatch 候选素材；完整解包数据不会进入仓库或
+发布包。
 
 ## 检查与发布
 

@@ -1,0 +1,73 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/allenx555/MaaSVWB/schemas/battle-deck-import.schema.json",
+    "$defs": {
+        "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "target": {
+            "enum": [
+                "none",
+                "enemy_leader",
+                "ally_leader",
+                "enemy_follower",
+                "ally_follower"
+            ]
+        }
+    },
+    "type": "object",
+    "required": ["schema_version", "id", "name", "cards"],
+    "properties": {
+        "$schema": { "type": "string" },
+        "schema_version": { "const": 1 },
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "cards": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": [
+                    "ref",
+                    "copies",
+                    "default_target",
+                    "allowed_targets"
+                ],
+                "properties": {
+                    "ref": { "type": "string", "minLength": 1 },
+                    "copies": { "type": "integer", "minimum": 1, "maximum": 3 },
+                    "default_target": { "$ref": "#/$defs/target" },
+                    "allowed_targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "contains": { "$ref": "#/$defs/target" },
+                        "items": { "$ref": "#/$defs/target" }
+                    },
+                    "play_priority": {
+                        "type": "integer",
+                        "minimum": -1000,
+                        "maximum": 1000,
+                        "default": 0
+                    },
+                    "max_uses_per_turn": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "default": 3
+                    },
+                    "mulligan_keep": { "type": "boolean", "default": false },
+                    "evolution_priority": {
+                        "type": "integer",
+                        "minimum": -1000,
+                        "maximum": 1000
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}

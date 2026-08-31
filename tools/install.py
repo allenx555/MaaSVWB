@@ -37,6 +37,12 @@ def install_resource():
         install_path / "catalog",
         dirs_exist_ok=True,
     )
+    shutil.copytree(
+        working_dir / "assets" / "battle",
+        install_path / "battle",
+        dirs_exist_ok=True,
+    )
+    (install_path / "battle" / "profiles").mkdir(parents=True, exist_ok=True)
 
     interface = build_interface()
     interface["version"] = version

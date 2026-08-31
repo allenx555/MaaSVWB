@@ -12,6 +12,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 
 from solution_engine.repository import SolutionRepository, VALID_ID  # noqa: E402
+from battle_engine.repository import (  # noqa: E402
+    BattleProfileRepository,
+    CardCatalogRepository,
+)
 
 
 CATALOG_NAME = re.compile(r"^(?P<category>[a-z0-9_-]+)_catalog\.json$")
@@ -90,6 +94,26 @@ def ensure_acyclic(name: str, items: dict[str, dict]) -> None:
 
 
 def main() -> int:
+    catalog_path = PROJECT_ROOT / "assets" / "battle" / "card_catalog.json"
+    validate_document(
+        json.loads(catalog_path.read_text(encoding="utf-8")),
+        "card-catalog.schema.json",
+        catalog_path,
+    )
+    card_catalog = CardCatalogRepository(catalog_path).load()
+    print(f"OK  {catalog_path.name}: {len(card_catalog.cards)} 张已注册卡牌")
+
+    profile_dir = PROJECT_ROOT / "assets" / "battle" / "profiles"
+    profile_repository = BattleProfileRepository(profile_dir, card_catalog)
+    for path in sorted(profile_dir.glob("*.json")):
+        validate_document(
+            json.loads(path.read_text(encoding="utf-8")),
+            "battle-profile.schema.json",
+            path,
+        )
+        profile = profile_repository.load(path.stem)
+        print(f"OK  {path.name}: {profile.name} ({len(profile.deck)} 种卡牌)")
+
     catalogs: dict[str, dict[str, dict]] = {}
     for path in sorted((PROJECT_ROOT / "assets" / "catalog").glob("*_catalog.json")):
         category, items = load_catalog(path)

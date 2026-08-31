@@ -1,0 +1,161 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/allenx555/MaaSVWB/schemas/battle-profile.schema.json",
+    "$defs": {
+        "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "target": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+                "type": {
+                    "enum": [
+                        "none",
+                        "enemy_leader",
+                        "ally_leader",
+                        "enemy_follower",
+                        "ally_follower"
+                    ]
+                },
+                "selector": {
+                    "enum": [
+                        "leftmost",
+                        "rightmost",
+                        "lowest_attack",
+                        "highest_attack",
+                        "lowest_defense",
+                        "highest_defense"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
+        "when": {
+            "type": "object",
+            "properties": {
+                "minimum_energy": { "type": "integer", "minimum": 0, "maximum": 20 },
+                "minimum_board_slots": { "type": "integer", "minimum": 0, "maximum": 5 },
+                "enemy_ward": { "enum": ["any", "present", "absent"] }
+            },
+            "additionalProperties": false
+        },
+        "card_rule": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "play_priority": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+                "target": { "$ref": "#/$defs/target" },
+                "max_uses_per_turn": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "when": { "$ref": "#/$defs/when" }
+            },
+            "additionalProperties": false
+        }
+    },
+    "type": "object",
+    "required": ["schema_version", "id", "name", "deck", "cards"],
+    "properties": {
+        "$schema": { "type": "string" },
+        "schema_version": { "const": 1 },
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "deck": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": ["card_id", "copies"],
+                "properties": {
+                    "card_id": { "$ref": "#/$defs/id" },
+                    "copies": { "type": "integer", "minimum": 1, "maximum": 3 }
+                },
+                "additionalProperties": false
+            }
+        },
+        "cards": {
+            "type": "object",
+            "propertyNames": { "$ref": "#/$defs/id" },
+            "additionalProperties": { "$ref": "#/$defs/card_rule" }
+        },
+        "combos": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "priority", "steps"],
+                "properties": {
+                    "id": { "$ref": "#/$defs/id" },
+                    "priority": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+                    "steps": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "required": ["card_id"],
+                            "properties": {
+                                "card_id": { "$ref": "#/$defs/id" },
+                                "target": { "$ref": "#/$defs/target" }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "attack": {
+            "type": "object",
+            "properties": {
+                "clear_ward": { "type": "boolean" },
+                "otherwise": { "enum": ["enemy_leader", "enemy_follower"] },
+                "attacker_order": {
+                    "enum": ["left_to_right", "lowest_attack_first", "highest_attack_first"]
+                }
+            },
+            "additionalProperties": false
+        },
+        "evolution": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "prefer_can_attack": { "type": "boolean" },
+                "card_priority": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "$ref": "#/$defs/id" }
+                },
+                "type_order": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": { "enum": ["super", "normal"] }
+                }
+            },
+            "additionalProperties": false
+        },
+        "mulligan": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "keep": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "$ref": "#/$defs/id" }
+                },
+                "maximum_keep_cost": { "type": "integer", "minimum": 0, "maximum": 20 }
+            },
+            "additionalProperties": false
+        },
+        "safety": {
+            "type": "object",
+            "properties": {
+                "max_actions_per_turn": { "type": "integer", "minimum": 1, "maximum": 100 },
+                "max_retries_per_action": { "type": "integer", "minimum": 0, "maximum": 5 },
+                "no_progress_limit": { "type": "integer", "minimum": 1, "maximum": 10 }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false
+}

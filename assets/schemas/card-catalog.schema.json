@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/allenx555/MaaSVWB/schemas/card-catalog.schema.json",
+    "$defs": {
+        "target": {
+            "enum": [
+                "none",
+                "enemy_leader",
+                "ally_leader",
+                "enemy_follower",
+                "ally_follower"
+            ]
+        }
+    },
+    "type": "object",
+    "required": ["schema_version", "cards"],
+    "properties": {
+        "schema_version": { "const": 1 },
+        "cards": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "base_cost",
+                    "templates",
+                    "default_target",
+                    "allowed_targets"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+                    },
+                    "name": { "type": "string", "minLength": 1 },
+                    "type": { "enum": ["follower", "spell", "amulet"] },
+                    "base_cost": { "type": "integer", "minimum": 0, "maximum": 20 },
+                    "templates": {
+                        "type": "array",
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "items": { "type": "string", "minLength": 1 }
+                    },
+                    "default_target": { "$ref": "#/$defs/target" },
+                    "allowed_targets": {
+                        "type": "array",
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "items": { "$ref": "#/$defs/target" }
+                    },
+                    "traits": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "items": {
+                            "enum": ["storm", "rush", "ward", "generated"]
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}
