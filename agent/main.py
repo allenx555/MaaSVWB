@@ -20,6 +20,7 @@ def main():
     from maa.tasker import Tasker
 
     from actions.execute_solution import ExecuteSolution
+    from actions.execute_dungeon import ExecuteDungeon
 
     project_root = (
         Path(sys.executable).resolve().parent.parent
@@ -28,6 +29,7 @@ def main():
     )
     Tasker.set_log_dir(project_root / "debug")
     AgentServer.custom_action("ExecuteSolution")(ExecuteSolution)
+    AgentServer.custom_action("ExecuteDungeon")(ExecuteDungeon)
 
     socket_id = sys.argv[-1]
 

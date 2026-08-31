@@ -70,18 +70,36 @@ class MaaBackend:
         """读取玩家侧能量点，返回（当前值，上限）。"""
         detail = self.recognize(CURRENT_ENERGY)
         result = detail.best_result if detail and detail.hit else None
+        if result is None and detail:
+            results = getattr(detail, "all_results", ())
+            result = results[0] if results else None
         text = getattr(result, "text", "")
-        normalized = text.translate(str.maketrans({"I": "1", "l": "1", "|": "/"}))
-        match = re.search(r"(\d+)\s*/\s*(\d+)", normalized)
-        if match is None:
+        parsed = self._parse_energy_text(text)
+        if parsed is None:
             LOGGER.warning("未能读取当前能量点: %r", text)
             return None
-        current, maximum = (int(value) for value in match.groups())
-        if not 0 <= current <= maximum <= 10:
-            LOGGER.warning("当前能量点超出支持范围: %d/%d", current, maximum)
-            return None
-        LOGGER.info("实时能量点: %d/%d", current, maximum)
+        current, maximum = parsed
+        LOGGER.info("实时能量点: %d/%d（OCR=%r）", current, maximum, text)
         return current, maximum
+
+    @staticmethod
+    def _parse_energy_text(text: str) -> tuple[int, int] | None:
+        normalized = text.translate(str.maketrans({"I": "1", "l": "1", "|": "/"}))
+        match = re.search(r"(\d+)\s*/\s*(\d+)", normalized)
+        candidates: list[tuple[int, int]] = []
+        if match is not None:
+            current_text, maximum_text = match.groups()
+            candidates.append((int(current_text), int(maximum_text)))
+        digits = re.sub(r"\D", "", normalized)
+        for separator in (index for index, value in enumerate(digits) if value == "1"):
+            if separator == 0 or separator == len(digits) - 1:
+                continue
+            candidates.append((int(digits[:separator]), int(digits[separator + 1 :])))
+        if len(digits) in {2, 4}:
+            middle = len(digits) // 2
+            candidates.append((int(digits[:middle]), int(digits[middle:])))
+        valid = [pair for pair in candidates if 0 <= pair[0] <= pair[1] <= 10]
+        return valid[0] if valid else None
 
     def read_follower_count(self, side: str) -> int | None:
         """根据随从左下角蓝色攻击力数字，读取当前一侧的随从数量。"""
@@ -132,6 +150,41 @@ class MaaBackend:
             peaks,
         )
         return len(peaks)
+
+    def read_ward_indexes(self, enemy_count: int) -> tuple[int, ...]:
+        """按敌方随从序号检测明亮的黄绿色守护盾牌。"""
+        if enemy_count <= 0:
+            return ()
+        frame = self.capture_frame()
+        if frame is None or frame.ndim < 3:
+            return ()
+
+        wards: list[int] = []
+        for index in range(1, enemy_count + 1):
+            center_x, center_y = self.layout.indexed_point(
+                "enemy_followers", enemy_count, index
+            )
+            left = max(0, center_x - 78)
+            right = min(frame.shape[1], center_x + 79)
+            top = max(0, center_y - 105)
+            bottom = min(frame.shape[0], center_y + 45)
+            crop = frame[top:bottom, left:right].astype(np.float32)
+            blue = crop[:, :, 0]
+            green = crop[:, :, 1]
+            red = crop[:, :, 2]
+            shield_pixels = (
+                (green > 145)
+                & (red > 95)
+                & (green > blue * 1.25)
+                & (green > red * 1.03)
+            )
+            count = int(np.count_nonzero(shield_pixels))
+            LOGGER.debug("敌方随从 %d 守护特征像素=%d", index, count)
+            if count >= 900:
+                wards.append(index)
+        if wards:
+            LOGGER.info("检测到敌方守护随从序号: %s", wards)
+        return tuple(wards)
 
     def hand_is_expanded(
         self, point: tuple[int, int]

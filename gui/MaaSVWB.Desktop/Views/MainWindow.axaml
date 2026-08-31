@@ -37,12 +37,50 @@
       <TabItem Header="对战教程">
         <views:TaskTabView DataContext="{Binding Tutorial}" />
       </TabItem>
-      <TabItem Header="地域试炼" IsEnabled="False">
-        <Grid>
-          <Border Classes="card" Width="430" Padding="38" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <StackPanel Spacing="12" HorizontalAlignment="Center">
-              <TextBlock FontSize="25" HorizontalAlignment="Center" Text="地域试炼" />
-              <TextBlock Foreground="#89949C" HorizontalAlignment="Center" Text="功能规划中，暂不可用" />
+      <TabItem Header="地城试炼">
+        <Grid Margin="24" ColumnDefinitions="*,*" ColumnSpacing="18">
+          <Border Classes="card">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+              <TextBlock Classes="sectionTitle" Text="地城试炼" />
+              <TextBlock Grid.Row="1" Classes="caption" TextWrapping="Wrap"
+                         Text="使用当前已在游戏中选定的无限制牌组进行自动对战；不会按牌组名称检查或切换牌组。" />
+
+              <StackPanel Grid.Row="2" Margin="0,12,0,0" Spacing="7">
+                <TextBlock FontWeight="SemiBold" Text="战斗次数" />
+                <NumericUpDown Minimum="1"
+                               Maximum="99"
+                               Increment="1"
+                               Value="{Binding DungeonBattleCount}"
+                               HorizontalAlignment="Stretch"
+                               MinHeight="40" />
+                <TextBlock Classes="caption" Text="{Binding DungeonBattleCountText}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap"
+                           Text="战斗次数包含首次挑战，且只有胜利才计数。失败后仍会再战；连续失败超过 3 次时停止。" />
+              </StackPanel>
+
+              <Border Grid.Row="3" Margin="0,18,0,0" Padding="12" Background="#FFF6E5" CornerRadius="7">
+                <StackPanel Spacing="7">
+                  <TextBlock FontWeight="SemiBold" Foreground="#80601D" Text="启动前检查" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap"
+                             Text="请将模拟器设为 1280×720 横屏，并停在地城试炼关卡列表或一场已开始的玩家回合。当前版本直接使用游戏内已选牌组。" />
+                </StackPanel>
+              </Border>
+
+              <Button Grid.Row="4" Classes="primary" Command="{Binding DungeonRunCommand}" HorizontalAlignment="Stretch">
+                <TextBlock HorizontalAlignment="Center" Text="开始地城试炼" />
+              </Button>
+            </Grid>
+          </Border>
+
+          <Border Grid.Column="1" Classes="card">
+            <StackPanel Spacing="12">
+              <TextBlock Classes="sectionTitle" Text="当前首版规则" />
+              <TextBlock Classes="caption" TextWrapping="Wrap"
+                         Text="确认牌组后直接决定，不交换起手；按策略优先级使用卡牌；敌方有守护时先攻击守护，否则攻击主战者；无动作后结束回合。" />
+              <Border Height="1" Margin="0,6" Background="#E5E9ED" />
+              <TextBlock FontWeight="SemiBold" Text="结算循环" />
+              <TextBlock Classes="caption" TextWrapping="Wrap"
+                         Text="胜利会推进完成计数并清零连续失败次数；失败不计数并继续再战。完成目标胜场后点击“返回地城”；连续第 4 次失败或结算状态不明时停止。" />
             </StackPanel>
           </Border>
         </Grid>

@@ -14,6 +14,8 @@
         "enemy_leader": [640, 70],
         "dialog_advance": [640, 635],
         "mulligan_confirm": [1150, 360],
+        "dungeon_stage_first": [640, 400],
+        "dungeon_deck_decide": [770, 550],
         "extra_energy": [1165, 515],
         "end_turn": [1170, 320]
     },

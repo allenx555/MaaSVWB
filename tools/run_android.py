@@ -24,6 +24,7 @@ from maa.tasker import Tasker  # noqa: E402
 from maa.toolkit import Toolkit  # noqa: E402
 
 from actions.execute_solution import ExecuteSolution  # noqa: E402
+from actions.execute_dungeon import ExecuteDungeon  # noqa: E402
 from runtime.events import JsonContextEventSink, JsonTaskEventSink, emit_event  # noqa: E402
 from runtime.session import choose_device, connect_controller, create_tasker  # noqa: E402
 
@@ -45,11 +46,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--serial", help="设备地址/序列号；不填时使用发现到的第一台设备")
     parser.add_argument(
         "--task",
-        choices=("tutorial", "puzzle"),
+        choices=("tutorial", "puzzle", "dungeon"),
         default="puzzle",
         help="执行的任务类型",
     )
     parser.add_argument("--solution", help="解法 ID；盘面解密默认使用 puzzle_001")
+    parser.add_argument("--profile", default="aggro_nightmare", help="地城对战策略 ID")
+    parser.add_argument("--battle-count", type=int, default=1, help="地城目标胜利场数")
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -159,7 +162,9 @@ def main() -> int:
     configure_utf8_stdio()
     args = parse_args()
     solution_id = args.solution or ("puzzle_001" if args.task == "puzzle" else None)
-    if args.execute and not solution_id:
+    if args.battle_count < 1 or args.battle_count > 99:
+        raise RuntimeError("战斗次数必须在 1 到 99 之间。")
+    if args.execute and args.task != "dungeon" and not solution_id:
         raise RuntimeError("执行教程时必须通过 --solution 指定已录入的教程脚本。")
 
     Toolkit.init_option(str(PROJECT_ROOT))
@@ -181,25 +186,44 @@ def main() -> int:
             f"{screenshot_size[0]}x{screenshot_size[1]}，必须将模拟器设为 1280x720 后再执行"
         )
 
-    tasker = create_tasker(PROJECT_ROOT, controller, ExecuteSolution())
+    tasker = create_tasker(
+        PROJECT_ROOT,
+        controller,
+        ExecuteSolution(),
+        {"ExecuteDungeon": ExecuteDungeon()},
+    )
     tasker.add_sink(JsonTaskEventSink())
     tasker.add_context_sink(JsonContextEventSink())
-    override = {
-        "执行解法": {
-            "custom_action_param": {
-                "solution": solution_id,
-                "skip_completed": args.skip_completed,
-                "reset_before_execute": args.reset_before_execute,
+    if args.task == "dungeon":
+        entry = "执行地城试炼"
+        display_target = f"{args.profile} / {args.battle_count} 场胜利"
+        override = {
+            entry: {
+                "custom_action_param": {
+                    "profile": args.profile,
+                    "battle_count": args.battle_count,
+                }
             }
         }
-    }
+    else:
+        entry = "执行解法"
+        display_target = str(solution_id)
+        override = {
+            entry: {
+                "custom_action_param": {
+                    "solution": solution_id,
+                    "skip_completed": args.skip_completed,
+                    "reset_before_execute": args.reset_before_execute,
+                }
+            }
+        }
     done_event = threading.Event()
     stop_event = threading.Event()
     monitor = start_stop_monitor(tasker, args.stop_file, done_event, stop_event)
     try:
-        print(f"即将执行: {args.task} / {solution_id}")
-        emit_event("run", f"即将执行：{args.task} / {solution_id}", state="starting")
-        task = tasker.post_task("执行解法", override)
+        print(f"即将执行: {args.task} / {display_target}")
+        emit_event("run", f"即将执行：{args.task} / {display_target}", state="starting")
+        task = tasker.post_task(entry, override)
         if not wait_task_interruptibly(tasker, task):
             emit_event("run", "任务已由用户停止", state="stopped")
             return 130

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Callable
 
 from maa.controller import AdbController
@@ -47,6 +48,7 @@ def create_tasker(
     project_root: Path,
     controller: AdbController,
     action: CustomAction,
+    extra_actions: Mapping[str, CustomAction] | None = None,
 ) -> Tasker:
     resource_root = next(
         (
@@ -67,6 +69,9 @@ def create_tasker(
         raise RuntimeError("资源加载失败，请检查 Pipeline 和 debug 日志")
     if not resource.register_custom_action("ExecuteSolution", action):
         raise RuntimeError("注册 ExecuteSolution 自定义动作失败")
+    for name, extra_action in (extra_actions or {}).items():
+        if not resource.register_custom_action(name, extra_action):
+            raise RuntimeError(f"注册 {name} 自定义动作失败")
 
     tasker = Tasker()
     tasker.bind(resource, controller)

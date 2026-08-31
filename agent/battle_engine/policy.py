@@ -29,7 +29,11 @@ class BattlePolicy:
     def __init__(self, profile: BattleProfile, catalog: CardCatalog) -> None:
         self.profile = profile
         self.catalog = catalog
-        self.deck_ids = frozenset(item.card_id for item in profile.deck)
+        self.playable_ids = frozenset(item.card_id for item in profile.deck) | frozenset(
+            card_id
+            for card_id, definition in catalog.cards.items()
+            if "generated" in definition.traits
+        )
 
     def choose_play_plan(self, state: BattleState) -> ActionPlan | None:
         """选择当前最高优先级的完整组合或单张出牌计划。"""
@@ -61,7 +65,7 @@ class BattlePolicy:
     def _plan_single(
         self, observed: ObservedCard, state: BattleState
     ) -> ActionPlan | None:
-        if not observed.playable or observed.card_id not in self.deck_ids:
+        if not observed.playable or observed.card_id not in self.playable_ids:
             return None
         definition = self.catalog.cards.get(observed.card_id)
         if definition is None:
@@ -76,7 +80,7 @@ class BattlePolicy:
         return ActionPlan(
             reason=f"card:{observed.card_id}@hand:{observed.hand_index}",
             priority=rule.play_priority,
-            steps=(PlannedCardPlay(observed.card_id, target),),
+            steps=(PlannedCardPlay(observed.card_id, target, observed.hand_index),),
         )
 
     def _plan_combo(self, combo: ComboRule, state: BattleState) -> ActionPlan | None:
@@ -120,7 +124,7 @@ class BattlePolicy:
             available.remove(match)
             local_uses[step.card_id] = local_uses.get(step.card_id, 0) + 1
             target = step.target or rule.target or definition.default_target
-            planned.append(PlannedCardPlay(step.card_id, target))
+            planned.append(PlannedCardPlay(step.card_id, target, match.hand_index))
 
         return ActionPlan(
             reason=f"combo:{combo.id}",

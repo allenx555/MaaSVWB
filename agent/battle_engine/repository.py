@@ -105,7 +105,12 @@ class BattleProfileRepository:
         self._require_known_cards(deck_ids, "deck")
 
         rule_ids = set(profile.cards)
-        extra_rules = sorted(rule_ids - deck_ids)
+        generated_ids = {
+            card_id
+            for card_id, definition in self.catalog.cards.items()
+            if "generated" in definition.traits
+        }
+        extra_rules = sorted(rule_ids - deck_ids - generated_ids)
         if extra_rules:
             raise BattleProfileError(
                 f"cards 包含不在 deck 中的卡牌: {', '.join(extra_rules)}"

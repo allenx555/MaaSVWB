@@ -1,0 +1,93 @@
+{
+    "$schema": "../../assets/schemas/battle-deck-import.schema.json",
+    "schema_version": 1,
+    "id": "aggro_nightmare",
+    "name": "快梦",
+    "description": "无限制梦魇40张卡组；卡牌已由牌组哈希与SVWBData核对，出牌优先级与换牌策略待校准。",
+    "cards": [
+        {
+            "ref": "10501110",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10503210",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10251120",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10851120",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10601110",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10051130",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10651110",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10851130",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10951110",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10153310",
+            "copies": 3,
+            "default_target": "enemy_leader",
+            "allowed_targets": ["enemy_leader", "enemy_follower"]
+        },
+        {
+            "ref": "10552310",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10151110",
+            "copies": 3,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10153140",
+            "copies": 2,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        },
+        {
+            "ref": "10253120",
+            "copies": 2,
+            "default_target": "none",
+            "allowed_targets": ["none"]
+        }
+    ]
+}

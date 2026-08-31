@@ -11,4 +11,6 @@ public sealed class FrontendSettings
     public string DeviceSerial { get; set; } = string.Empty;
 
     public bool SaveDraw { get; set; }
+
+    public int DungeonBattleCount { get; set; } = 1;
 }

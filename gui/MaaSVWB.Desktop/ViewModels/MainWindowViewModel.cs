@@ -13,6 +13,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string _adbPath;
     private string _deviceSerial;
     private bool _saveDraw;
+    private int _dungeonBattleCount;
     private string _logText = string.Empty;
     private string _statusText = "准备就绪";
     private bool _isBusy;
@@ -25,9 +26,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _adbPath = settings.AdbPath;
         _deviceSerial = settings.DeviceSerial;
         _saveDraw = settings.SaveDraw;
+        _dungeonBattleCount = Math.Clamp(settings.DungeonBattleCount, 1, 99);
 
         RefreshDevicesCommand = new AsyncCommand(RefreshDevicesAsync, () => !IsBusy);
         TestConnectionCommand = new AsyncCommand(TestConnectionAsync, () => !IsBusy);
+        DungeonRunCommand = new AsyncCommand(RunDungeonAsync, () => !IsBusy);
         StopCommand = new RelayCommand(Stop, () => IsBusy);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         ClearLogCommand = new RelayCommand(() => LogText = string.Empty);
@@ -103,6 +106,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         set => SetProperty(ref _saveDraw, value);
     }
 
+    public int DungeonBattleCount
+    {
+        get => _dungeonBattleCount;
+        set
+        {
+            var normalized = Math.Clamp(value, 1, 99);
+            if (SetProperty(ref _dungeonBattleCount, normalized))
+            {
+                OnPropertyChanged(nameof(DungeonBattleCountText));
+            }
+        }
+    }
+
+    public string DungeonBattleCountText =>
+        $"目标完成 {DungeonBattleCount} 场胜利；失败不会计入战斗次数";
+
     public string LogText
     {
         get => _logText;
@@ -124,6 +143,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             {
                 RefreshDevicesCommand.RaiseCanExecuteChanged();
                 TestConnectionCommand.RaiseCanExecuteChanged();
+                DungeonRunCommand.RaiseCanExecuteChanged();
                 StopCommand.RaiseCanExecuteChanged();
             }
         }
@@ -132,6 +152,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public AsyncCommand RefreshDevicesCommand { get; }
 
     public AsyncCommand TestConnectionCommand { get; }
+
+    public AsyncCommand DungeonRunCommand { get; }
 
     public RelayCommand StopCommand { get; }
 
@@ -239,7 +261,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         string solutionId,
         string displayName,
         bool execute,
-        bool skipCompleted)
+        bool skipCompleted,
+        int battleCount = 1)
     {
         if (IsBusy)
         {
@@ -262,7 +285,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 execute,
                 skipCompleted,
                 SaveDraw,
-                AppendLog);
+                AppendLog,
+                battleCount);
             if (_automation.WasStopped || exitCode == 130)
             {
                 StatusText = "任务已停止";
@@ -285,6 +309,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private async Task RunDungeonAsync()
+    {
+        SaveSettings();
+        await RunAutomationAsync(
+            "dungeon",
+            "aggro_nightmare",
+            $"地城试炼（目标 {DungeonBattleCount} 场胜利）",
+            execute: true,
+            skipCompleted: false,
+            battleCount: DungeonBattleCount);
+    }
+
     private void Stop()
     {
         _automation.Stop();
@@ -301,6 +337,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             AdbPath = AdbPath,
             DeviceSerial = DeviceSerial,
             SaveDraw = SaveDraw,
+            DungeonBattleCount = DungeonBattleCount,
         });
         StatusText = "设置已保存";
     }

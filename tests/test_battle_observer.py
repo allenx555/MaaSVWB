@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+import sys
+import unittest
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "agent"))
+
+from battle_engine.observer import HandText, match_card_name, parse_hand_texts  # noqa: E402
+from battle_engine.repository import CardCatalogRepository  # noqa: E402
+
+
+class BattleObserverTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
+
+    def test_exact_name_resolves_card(self) -> None:
+        self.assertEqual(match_card_name("蛇神之怒", self.catalog), ("10153310", 1.0))
+
+    def test_ocr_punctuation_and_one_wrong_character_are_tolerated(self) -> None:
+        matched = match_card_name("可爱恶魔 莉莉姆", self.catalog)
+        self.assertIsNotNone(matched)
+        assert matched is not None
+        self.assertEqual(matched[0], "10851120")
+
+    def test_hand_indexes_follow_screen_order_and_keep_duplicates(self) -> None:
+        observed = parse_hand_texts(
+            [
+                HandText("蛇神之怒", 700, 550, 100, 30),
+                HandText("怨灵", 300, 550, 80, 30),
+                HandText("怨灵", 490, 550, 80, 30),
+            ],
+            self.catalog,
+            energy=1,
+        )
+        self.assertEqual([item.card.card_id for item in observed], ["90051130", "90051130", "10153310"])
+        self.assertEqual([item.card.hand_index for item in observed], [1, 2, 3])
+        self.assertEqual([item.card.playable for item in observed], [True, True, False])
+        self.assertEqual([item.source for item in observed], [(340, 665), (530, 665), (750, 665)])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,6 +1,6 @@
 # 用户对战策略 JSON
 
-Battle Profile 是地域试炼自动对战使用的用户策略配置。它只描述卡组与决策偏好；卡牌
+Battle Profile 是地城试炼自动对战使用的用户策略配置。它只描述卡组与决策偏好；卡牌
 识别、坐标、MaaFramework Pipeline 和设备操作仍由 MaaSVWB 管理。
 
 ## 文件位置
@@ -22,7 +22,7 @@ Battle Profile 是地域试炼自动对战使用的用户策略配置。它只�
   "schema_version": 1,
   "id": "aggro_shadow",
   "name": "快鬼",
-  "description": "地域试炼用快攻策略",
+  "description": "地城试炼用快攻策略",
   "deck": [
     { "card_id": "example_follower", "copies": 3 },
     { "card_id": "example_burn", "copies": 3 }
@@ -104,14 +104,22 @@ Battle Profile 是地域试炼自动对战使用的用户策略配置。它只�
 配置不允许包含坐标、Pipeline 节点、Shell 命令、Python 表达式或任意可执行内容。
 未知字段、未知卡牌、非法目标、重复 ID 和越界策略文件名都会在执行前报错。
 
-当前版本已经提供 Schema、加载、交叉校验和确定性出牌计划接口。地域试炼盘面观察与
+当前版本已经提供 Schema、加载、交叉校验和确定性出牌计划接口。地城试炼盘面观察与
 实际循环执行将在卡组和 1280×720 识别素材录入后接入。
+
+## 战斗次数
+
+战斗次数属于一次自动化会话，不属于卡组策略，因此不会写入 Battle Profile。GUI 中
+填写的次数包含首次挑战，并表示目标胜场数：`1` 表示取得一场胜利后返回地城，`3`
+表示累计取得三场胜利。失败不计入战斗次数，之后仍会点击再战；任意胜利都会清零连续
+失败次数。连续失败超过三次（即连续第 4 次失败）或结算状态无法确认时停止。
 
 ## 从 SVWBData 导入卡组
 
 开发者可以使用 `tools/import_battle_deck.py` 从项目相邻的 `SVWBData` 中按中文名称或
 稳定卡牌 ID 生成卡组限定资源。导入格式见
-`docs/examples/battle_deck_import.json`。
+`docs/examples/battle_deck_import.json`。已确认的快梦完整卡组见
+`docs/examples/aggro_nightmare_deck_import.json`。
 
 如果多个版本共用同一中文名称，工具会列出候选 ID 并停止，配置中应改用稳定卡牌
 ID，避免误选旧版本或特殊对象。

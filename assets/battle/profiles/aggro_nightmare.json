@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schemas/battle-profile.schema.json",
+  "schema_version": 1,
+  "id": "aggro_nightmare",
+  "name": "无限制快攻梦魇",
+  "description": "用于首版地城自动对战的内部 OCR 规则；不校验游戏内牌组名称。",
+  "deck": [
+    { "card_id": "10501110", "copies": 3 }, { "card_id": "10503210", "copies": 3 },
+    { "card_id": "10251120", "copies": 3 }, { "card_id": "10851120", "copies": 3 },
+    { "card_id": "10601110", "copies": 3 }, { "card_id": "10051130", "copies": 3 },
+    { "card_id": "10651110", "copies": 3 }, { "card_id": "10851130", "copies": 3 },
+    { "card_id": "10951110", "copies": 3 }, { "card_id": "10153310", "copies": 3 },
+    { "card_id": "10552310", "copies": 3 }, { "card_id": "10151110", "copies": 3 },
+    { "card_id": "10153140", "copies": 2 }, { "card_id": "10253120", "copies": 2 }
+  ],
+  "cards": {
+    "10501110": { "play_priority": 99, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10503210": { "play_priority": 99, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10251120": { "play_priority": 99, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10851120": { "play_priority": 99, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10601110": { "play_priority": 98, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10051130": { "play_priority": 98, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10651110": { "play_priority": 98, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10851130": { "play_priority": 98, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10951110": { "play_priority": 98, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10153310": { "play_priority": 110, "target": { "type": "enemy_leader" }, "max_uses_per_turn": 3 },
+    "10552310": { "play_priority": 109, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10151110": { "play_priority": 97, "target": { "type": "none" }, "max_uses_per_turn": 3 },
+    "10153140": { "play_priority": 97, "target": { "type": "none" }, "max_uses_per_turn": 2 },
+    "10253120": { "play_priority": 96, "target": { "type": "none" }, "max_uses_per_turn": 2 },
+    "90051130": { "play_priority": 120, "target": { "type": "none" }, "max_uses_per_turn": 5 },
+    "90051120": { "play_priority": 119, "target": { "type": "none" }, "max_uses_per_turn": 5 }
+  },
+  "combos": [],
+  "attack": { "clear_ward": true, "otherwise": "enemy_leader", "attacker_order": "lowest_attack_first" },
+  "evolution": { "enabled": false, "prefer_can_attack": true, "card_priority": [], "type_order": ["super", "normal"] },
+  "mulligan": { "enabled": false, "keep": [], "maximum_keep_cost": 2 },
+  "safety": { "max_actions_per_turn": 30, "max_retries_per_action": 1, "no_progress_limit": 3 }
+}

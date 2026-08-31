@@ -578,6 +578,7 @@ class BattleState:
 class PlannedCardPlay:
     card_id: str
     target: Target
+    hand_index: int
 
 
 @dataclass(frozen=True)

@@ -44,6 +44,7 @@ public sealed class AutomationService : IDisposable
         bool skipCompleted,
         bool saveDraw,
         Action<string> onOutput,
+        int battleCount = 1,
         CancellationToken cancellationToken = default)
     {
         lock (_gate)
@@ -95,8 +96,18 @@ public sealed class AutomationService : IDisposable
         }
         startInfo.ArgumentList.Add("--task");
         startInfo.ArgumentList.Add(category);
-        startInfo.ArgumentList.Add("--solution");
-        startInfo.ArgumentList.Add(solutionId);
+        if (string.Equals(category, "dungeon", StringComparison.OrdinalIgnoreCase))
+        {
+            startInfo.ArgumentList.Add("--profile");
+            startInfo.ArgumentList.Add(solutionId);
+            startInfo.ArgumentList.Add("--battle-count");
+            startInfo.ArgumentList.Add(battleCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+        else
+        {
+            startInfo.ArgumentList.Add("--solution");
+            startInfo.ArgumentList.Add(solutionId);
+        }
         if (execute)
         {
             startInfo.ArgumentList.Add("--execute");
