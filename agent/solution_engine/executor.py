@@ -4,6 +4,14 @@ import logging
 import time
 from typing import Any, Protocol
 
+from pipeline_nodes import (
+    ACTIVATE_BUTTON,
+    EVOLVE_BUTTON,
+    SUPER_EVOLVE_BUTTON,
+    TUTORIAL_LEADER_OPERABLE,
+)
+
+from .actions import SUPPORTED_ACTIONS
 from .layout import BoardLayout
 from .models import Solution, SolutionError
 
@@ -62,25 +70,8 @@ class ActionBackend(Protocol):
 
 
 class SolutionExecutor:
-    SUPPORTED_ACTIONS = {
-        "tap",
-        "swipe",
-        "wait",
-        "key",
-        "verify",
-        "mulligan",
-        "confirm_mulligan",
-        "read_energy",
-        "use_extra_energy",
-        "play_card",
-        "attack",
-        "select_target",
-        "select_choice",
-        "evolve",
-        "activate_amulet",
-        "end_turn",
-        "skip_dialogue",
-    }
+    SUPPORTED_ACTIONS = SUPPORTED_ACTIONS
+    _HANDLERS = {action: f"_handle_{action}" for action in SUPPORTED_ACTIONS}
 
     def __init__(
         self,
@@ -170,312 +161,320 @@ class SolutionExecutor:
 
     def _execute_step(self, solution: Solution, step: dict, index: int) -> None:
         action = step["action"]
-        if action == "tap":
-            x, y = self._point(solution, step, "point", index)
-            self._require_success(self.backend.tap(x, y), index, action)
-            return
+        handler_name = self._HANDLERS.get(action)
+        if handler_name is None:
+            raise SolutionError(f"第 {index} 步包含未知动作: {action!r}")
+        handler = getattr(self, handler_name)
+        handler(solution, step, index)
 
-        if action == "swipe":
-            x1, y1 = self._point(solution, step, "from", index)
-            x2, y2 = self._point(solution, step, "to", index)
-            duration = self._milliseconds(step.get("duration_ms", 300), "duration_ms", index)
-            self._require_success(
-                self.backend.swipe(x1, y1, x2, y2, duration), index, action
-            )
-            return
+    def _handle_tap(self, solution: Solution, step: dict, index: int) -> None:
+        x, y = self._point(solution, step, "point", index)
+        self._require_success(self.backend.tap(x, y), index, "tap")
 
-        if action == "wait":
-            duration = self._milliseconds(step.get("duration_ms"), "duration_ms", index)
-            time.sleep(duration / 1000)
-            return
+    def _handle_swipe(self, solution: Solution, step: dict, index: int) -> None:
+        x1, y1 = self._point(solution, step, "from", index)
+        x2, y2 = self._point(solution, step, "to", index)
+        duration = self._milliseconds(step.get("duration_ms", 300), "duration_ms", index)
+        self._require_success(
+            self.backend.swipe(x1, y1, x2, y2, duration), index, "swipe"
+        )
 
-        if action == "key":
-            keycode = step.get("keycode")
-            if not isinstance(keycode, int) or keycode < 0:
-                raise SolutionError(f"第 {index} 步 keycode 必须是非负整数")
-            self._require_success(self.backend.key(keycode), index, action)
-            return
+    def _handle_wait(self, _solution: Solution, step: dict, index: int) -> None:
+        duration = self._milliseconds(
+            step.get("duration_ms"), "duration_ms", index, required=True
+        )
+        time.sleep(duration / 1000)
 
-        if action == "verify":
-            node = step.get("pipeline_node")
-            if not isinstance(node, str) or not node:
-                raise SolutionError(f"第 {index} 步缺少 pipeline_node")
-            retries = step.get("retries", 1)
-            if not isinstance(retries, int) or not 1 <= retries <= 20:
-                raise SolutionError(f"第 {index} 步 retries 必须在 1 到 20 之间")
-            interval = self._milliseconds(step.get("interval_ms", 500), "interval_ms", index)
-            for attempt in range(retries):
-                if self.backend.verify(node):
-                    return
-                if attempt + 1 < retries:
-                    time.sleep(interval / 1000)
-            raise SolutionError(f"第 {index} 步识别校验失败: {node}")
+    def _handle_key(self, _solution: Solution, step: dict, index: int) -> None:
+        keycode = step.get("keycode")
+        if not isinstance(keycode, int) or keycode < 0:
+            raise SolutionError(f"第 {index} 步 keycode 必须是非负整数")
+        self._require_success(self.backend.key(keycode), index, "key")
 
-        if action == "mulligan":
-            # 先保留稳定的语义入口；换牌选择策略将在后续实现。
-            self.logger.info("开局换牌逻辑尚未实现，本次不选择任何卡牌")
-            return
+    def _handle_verify(self, _solution: Solution, step: dict, index: int) -> None:
+        node = step.get("pipeline_node")
+        if not isinstance(node, str) or not node:
+            raise SolutionError(f"第 {index} 步缺少 pipeline_node")
+        retries = step.get("retries", 1)
+        if not isinstance(retries, int) or not 1 <= retries <= 20:
+            raise SolutionError(f"第 {index} 步 retries 必须在 1 到 20 之间")
+        interval = self._milliseconds(step.get("interval_ms", 500), "interval_ms", index)
+        for attempt in range(retries):
+            if self.backend.verify(node):
+                return
+            if attempt + 1 < retries:
+                time.sleep(interval / 1000)
+        raise SolutionError(f"第 {index} 步识别校验失败: {node}")
 
-        if action == "confirm_mulligan":
-            layout = self._require_layout(index)
-            self._require_success(
-                self.backend.tap(*layout.fixed_point("mulligan_confirm")),
-                index,
-                action,
-            )
-            return
+    def _handle_confirm_mulligan(
+        self, _solution: Solution, _step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        self._require_success(
+            self.backend.tap(*layout.fixed_point("mulligan_confirm")),
+            index,
+            "confirm_mulligan",
+        )
 
-        if action == "read_energy":
-            observed = self.backend.read_energy_points()
-            if observed is None:
-                raise SolutionError(f"第 {index} 步未能识别当前能量点")
-            current, maximum = observed
-            expected_current = step.get("current_energy")
-            expected_maximum = step.get("max_energy")
-            if expected_current is not None:
-                expected_current = self._non_negative_int(
-                    expected_current, "current_energy", index
-                )
-                if current != expected_current:
-                    raise SolutionError(
-                        f"第 {index} 步当前能量点为 {current}，"
-                        f"与预期 {expected_current} 不一致"
-                    )
-            if expected_maximum is not None:
-                expected_maximum = self._non_negative_int(
-                    expected_maximum, "max_energy", index
-                )
-                if maximum != expected_maximum:
-                    raise SolutionError(
-                        f"第 {index} 步能量点上限为 {maximum}，"
-                        f"与预期 {expected_maximum} 不一致"
-                    )
-            self.logger.info("当前能量点: %d/%d", current, maximum)
-            return
-
-        if action == "use_extra_energy":
-            layout = self._require_layout(index)
-            self._require_success(
-                self.backend.tap(*layout.fixed_point("extra_energy")),
-                index,
-                action,
+    def _handle_read_energy(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        observed = self.backend.read_energy_points()
+        if observed is None:
+            raise SolutionError(f"第 {index} 步未能识别当前能量点")
+        current, maximum = observed
+        expected_current = step.get("current_energy")
+        expected_maximum = step.get("max_energy")
+        if expected_current is not None:
+            expected_current = self._non_negative_int(
+                expected_current, "current_energy", index
             )
-            return
-
-        if action == "play_card":
-            layout = self._require_layout(index)
-            hand_index = self._positive_int(step.get("hand_index"), "hand_index", index)
-            authored_hand_count = self._positive_int(
-                step.get("hand_count"), "hand_count", index
-            )
-            hand_count = self._validate_hand_count(
-                authored_hand_count, hand_index, index
-            )
-            expand_hand = step.get("expand_hand")
-            if expand_hand is not None and not isinstance(expand_hand, bool):
-                raise SolutionError(f"第 {index} 步 expand_hand 必须是布尔值")
-            observed_expanded = self._observe_hand_expanded(layout, hand_count)
-            if expand_hand is None:
-                should_expand = (
-                    not observed_expanded
-                    if observed_expanded is not None
-                    else not self._hand_expanded
-                )
-            else:
-                should_expand = expand_hand
-            if should_expand:
-                self._require_success(
-                    self.backend.tap(*layout.fixed_point("hand_expand")),
-                    index,
-                    action,
-                )
-                expand_delay = self._milliseconds(
-                    step.get("expand_delay_ms", 350), "expand_delay_ms", index
-                )
-                if expand_delay:
-                    time.sleep(expand_delay / 1000)
-            # 普通出牌后手牌保持展开；显式 false 也表示调用方确认它已经展开。
-            self._hand_expanded = True
-            source = layout.indexed_point("hand", hand_count, hand_index)
-            destination = layout.fixed_point("play_area")
-            duration = self._milliseconds(step.get("duration_ms", 350), "duration_ms", index)
-            self._require_success(
-                self.backend.swipe(*source, *destination, duration), index, action
-            )
-            target = step.get("target")
-            if target is not None:
-                delay = self._milliseconds(
-                    step.get("target_delay_ms", 600), "target_delay_ms", index
-                )
-                if delay:
-                    time.sleep(delay / 1000)
-                self._tap_target(layout, target, index)
-                # 指定目标完成后游戏会把手牌收回右下角；下一次出牌需重新展开。
-                self._hand_expanded = False
-            return
-
-        if action == "attack":
-            layout = self._require_layout(index)
-            attacker_index = self._positive_int(
-                step.get("attacker_index"), "attacker_index", index
-            )
-            ally_count = self._field_count(
-                step.get("ally_count"), "ally", "ally_count", index
-            )
-            source = layout.indexed_point("ally_followers", ally_count, attacker_index)
-            target = self._target_point(layout, step.get("target"), index)
-            duration = self._milliseconds(step.get("duration_ms", 300), "duration_ms", index)
-            self.logger.info(
-                "攻击拖拽：当前己方随从 %d/%d，%s -> %s，目标=%s",
-                attacker_index,
-                ally_count,
-                source,
-                target,
-                step.get("target", {}).get("type"),
-            )
-            self._require_success(
-                self.backend.swipe(*source, *target, duration), index, action
-            )
-            return
-
-        if action == "select_target":
-            layout = self._require_layout(index)
-            self._tap_target(layout, step.get("target"), index)
-            return
-
-        if action == "select_choice":
-            layout = self._require_layout(index)
-            choice_index = self._positive_int(
-                step.get("choice_index"), "choice_index", index
-            )
-            choice_count = self._positive_int(
-                step.get("choice_count"), "choice_count", index
-            )
-            point = layout.indexed_point("choices", choice_count, choice_index)
-            self._require_success(
-                self.backend.tap(*point), index, "select_choice"
-            )
-            # 模式选择完成后回到盘面，手牌会收回右下角。
-            self._hand_expanded = False
-            return
-
-        if action == "evolve":
-            layout = self._require_layout(index)
-            evolution_type = step.get("evolution_type", "normal")
-            evolution_nodes = {
-                "normal": "识别_进化按钮",
-                "super": "识别_超进化按钮",
-            }
-            if evolution_type not in evolution_nodes:
+            if current != expected_current:
                 raise SolutionError(
-                    f"第 {index} 步 evolution_type 必须是 normal 或 super"
+                    f"第 {index} 步当前能量点为 {current}，"
+                    f"与预期 {expected_current} 不一致"
                 )
-            self._tap_target(layout, step.get("target"), index)
-            detail_delay = self._milliseconds(
-                step.get("detail_delay_ms", 500), "detail_delay_ms", index
+        if expected_maximum is not None:
+            expected_maximum = self._non_negative_int(
+                expected_maximum, "max_energy", index
             )
-            if detail_delay:
-                time.sleep(detail_delay / 1000)
-            self._require_success(
-                self.backend.tap_recognition(
-                    evolution_nodes[evolution_type],
-                    self._milliseconds(
-                        step.get("evolution_timeout_ms", 5_000),
-                        "evolution_timeout_ms",
-                        index,
-                    ),
-                ),
-                index,
-                action,
-            )
-            self._hand_expanded = False
-            return
-
-        if action == "activate_amulet":
-            layout = self._require_layout(index)
-            amulet_index = self._positive_int(
-                step.get("amulet_index"), "amulet_index", index
-            )
-            ally_count = self._positive_int(
-                step.get("ally_count"), "ally_count", index
-            )
-            self._require_success(
-                self.backend.tap(
-                    *layout.indexed_point(
-                        "ally_followers", ally_count, amulet_index
-                    )
-                ),
-                index,
-                action,
-            )
-            detail_delay = self._milliseconds(
-                step.get("detail_delay_ms", 500), "detail_delay_ms", index
-            )
-            if detail_delay:
-                time.sleep(detail_delay / 1000)
-            self._require_success(
-                self.backend.tap_recognition(
-                    "识别_启动按钮",
-                    self._milliseconds(
-                        step.get("activation_timeout_ms", 5_000),
-                        "activation_timeout_ms",
-                        index,
-                    ),
-                ),
-                index,
-                action,
-            )
-            target = step.get("target")
-            if target is not None:
-                target_delay = self._milliseconds(
-                    step.get("target_delay_ms", 600), "target_delay_ms", index
+            if maximum != expected_maximum:
+                raise SolutionError(
+                    f"第 {index} 步能量点上限为 {maximum}，"
+                    f"与预期 {expected_maximum} 不一致"
                 )
-                if target_delay:
-                    time.sleep(target_delay / 1000)
-                self._tap_target(layout, target, index)
-            self._hand_expanded = False
-            return
+        self.logger.info("当前能量点: %d/%d", current, maximum)
 
-        if action == "end_turn":
-            layout = self._require_layout(index)
-            self._require_success(
-                self.backend.tap(*layout.fixed_point("end_turn")), index, action
-            )
-            return
+    def _handle_use_extra_energy(
+        self, _solution: Solution, _step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        self._require_success(
+            self.backend.tap(*layout.fixed_point("extra_energy")),
+            index,
+            "use_extra_energy",
+        )
 
-        if action == "skip_dialogue":
-            layout = self._require_layout(index)
-            node = step.get("pipeline_node", "识别_教程主战者框可操作")
-            if not isinstance(node, str) or not node:
-                raise SolutionError(f"第 {index} 步 pipeline_node 必须是非空字符串")
-            max_clicks = self._positive_int(step.get("max_clicks", 30), "max_clicks", index)
-            stable_hits = self._positive_int(
-                step.get("stable_hits", 2), "stable_hits", index
+    def _handle_play_card(self, _solution: Solution, step: dict, index: int) -> None:
+        layout = self._require_layout(index)
+        hand_index = self._positive_int(step.get("hand_index"), "hand_index", index)
+        authored_hand_count = self._positive_int(
+            step.get("hand_count"), "hand_count", index
+        )
+        hand_count = self._validate_hand_count(
+            authored_hand_count, hand_index, index
+        )
+        expand_hand = step.get("expand_hand")
+        if expand_hand is not None and not isinstance(expand_hand, bool):
+            raise SolutionError(f"第 {index} 步 expand_hand 必须是布尔值")
+        observed_expanded = self._observe_hand_expanded(layout, hand_count)
+        if expand_hand is None:
+            should_expand = (
+                not observed_expanded
+                if observed_expanded is not None
+                else not self._hand_expanded
             )
-            if max_clicks > 100:
-                raise SolutionError(f"第 {index} 步 max_clicks 不能超过 100")
-            if stable_hits > 5:
-                raise SolutionError(f"第 {index} 步 stable_hits 不能超过 5")
-            interval = self._milliseconds(
-                step.get("interval_ms", 500), "interval_ms", index
-            )
-            click_x, click_y = layout.fixed_point("dialog_advance")
+        else:
+            should_expand = expand_hand
+        if should_expand:
             self._require_success(
-                self.backend.skip_dialogue(
-                    node,
-                    click_x,
-                    click_y,
-                    max_clicks,
-                    interval,
-                    stable_hits,
-                ),
+                self.backend.tap(*layout.fixed_point("hand_expand")),
                 index,
-                action,
+                "play_card",
             )
-            return
+            expand_delay = self._milliseconds(
+                step.get("expand_delay_ms", 350), "expand_delay_ms", index
+            )
+            if expand_delay:
+                time.sleep(expand_delay / 1000)
+        # 普通出牌后手牌保持展开；显式 false 也表示调用方确认它已经展开。
+        self._hand_expanded = True
+        source = layout.indexed_point("hand", hand_count, hand_index)
+        destination = layout.fixed_point("play_area")
+        duration = self._milliseconds(step.get("duration_ms", 350), "duration_ms", index)
+        self._require_success(
+            self.backend.swipe(*source, *destination, duration), index, "play_card"
+        )
+        target = step.get("target")
+        if target is not None:
+            delay = self._milliseconds(
+                step.get("target_delay_ms", 600), "target_delay_ms", index
+            )
+            if delay:
+                time.sleep(delay / 1000)
+            self._tap_target(layout, target, index)
+            # 指定目标完成后游戏会把手牌收回右下角；下一次出牌需重新展开。
+            self._hand_expanded = False
+
+    def _handle_attack(self, _solution: Solution, step: dict, index: int) -> None:
+        layout = self._require_layout(index)
+        attacker_index = self._positive_int(
+            step.get("attacker_index"), "attacker_index", index
+        )
+        ally_count = self._field_count(
+            step.get("ally_count"), "ally", "ally_count", index
+        )
+        source = layout.indexed_point("ally_followers", ally_count, attacker_index)
+        target = self._target_point(layout, step.get("target"), index)
+        duration = self._milliseconds(step.get("duration_ms", 300), "duration_ms", index)
+        self.logger.info(
+            "攻击拖拽：当前己方随从 %d/%d，%s -> %s，目标=%s",
+            attacker_index,
+            ally_count,
+            source,
+            target,
+            step.get("target", {}).get("type"),
+        )
+        self._require_success(
+            self.backend.swipe(*source, *target, duration), index, "attack"
+        )
+
+    def _handle_select_target(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        self._tap_target(layout, step.get("target"), index)
+
+    def _handle_select_choice(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        choice_index = self._positive_int(
+            step.get("choice_index"), "choice_index", index
+        )
+        choice_count = self._positive_int(
+            step.get("choice_count"), "choice_count", index
+        )
+        point = layout.indexed_point("choices", choice_count, choice_index)
+        self._require_success(
+            self.backend.tap(*point), index, "select_choice"
+        )
+        # 模式选择完成后回到盘面，手牌会收回右下角。
+        self._hand_expanded = False
+
+    def _handle_evolve(self, _solution: Solution, step: dict, index: int) -> None:
+        layout = self._require_layout(index)
+        evolution_type = step.get("evolution_type", "normal")
+        evolution_nodes = {
+            "normal": EVOLVE_BUTTON,
+            "super": SUPER_EVOLVE_BUTTON,
+        }
+        if evolution_type not in evolution_nodes:
+            raise SolutionError(
+                f"第 {index} 步 evolution_type 必须是 normal 或 super"
+            )
+        self._tap_target(layout, step.get("target"), index)
+        detail_delay = self._milliseconds(
+            step.get("detail_delay_ms", 500), "detail_delay_ms", index
+        )
+        if detail_delay:
+            time.sleep(detail_delay / 1000)
+        self._require_success(
+            self.backend.tap_recognition(
+                evolution_nodes[evolution_type],
+                self._milliseconds(
+                    step.get("evolution_timeout_ms", 5_000),
+                    "evolution_timeout_ms",
+                    index,
+                ),
+            ),
+            index,
+            "evolve",
+        )
+        self._hand_expanded = False
+
+    def _handle_activate_amulet(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        amulet_index = self._positive_int(
+            step.get("amulet_index"), "amulet_index", index
+        )
+        ally_count = self._positive_int(
+            step.get("ally_count"), "ally_count", index
+        )
+        self._require_success(
+            self.backend.tap(
+                *layout.indexed_point(
+                    "ally_followers", ally_count, amulet_index
+                )
+            ),
+            index,
+            "activate_amulet",
+        )
+        detail_delay = self._milliseconds(
+            step.get("detail_delay_ms", 500), "detail_delay_ms", index
+        )
+        if detail_delay:
+            time.sleep(detail_delay / 1000)
+        self._require_success(
+            self.backend.tap_recognition(
+                ACTIVATE_BUTTON,
+                self._milliseconds(
+                    step.get("activation_timeout_ms", 5_000),
+                    "activation_timeout_ms",
+                    index,
+                ),
+            ),
+            index,
+            "activate_amulet",
+        )
+        target = step.get("target")
+        if target is not None:
+            target_delay = self._milliseconds(
+                step.get("target_delay_ms", 600), "target_delay_ms", index
+            )
+            if target_delay:
+                time.sleep(target_delay / 1000)
+            self._tap_target(layout, target, index)
+        self._hand_expanded = False
+
+    def _handle_end_turn(
+        self, _solution: Solution, _step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        self._require_success(
+            self.backend.tap(*layout.fixed_point("end_turn")), index, "end_turn"
+        )
+
+    def _handle_skip_dialogue(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        layout = self._require_layout(index)
+        node = step.get("pipeline_node", TUTORIAL_LEADER_OPERABLE)
+        if not isinstance(node, str) or not node:
+            raise SolutionError(f"第 {index} 步 pipeline_node 必须是非空字符串")
+        max_clicks = self._positive_int(step.get("max_clicks", 30), "max_clicks", index)
+        stable_hits = self._positive_int(
+            step.get("stable_hits", 2), "stable_hits", index
+        )
+        if max_clicks > 100:
+            raise SolutionError(f"第 {index} 步 max_clicks 不能超过 100")
+        if stable_hits > 5:
+            raise SolutionError(f"第 {index} 步 stable_hits 不能超过 5")
+        interval = self._milliseconds(
+            step.get("interval_ms", 500), "interval_ms", index
+        )
+        click_x, click_y = layout.fixed_point("dialog_advance")
+        self._require_success(
+            self.backend.skip_dialogue(
+                node,
+                click_x,
+                click_y,
+                max_clicks,
+                interval,
+                stable_hits,
+            ),
+            index,
+            "skip_dialogue",
+        )
 
     @staticmethod
-    def _milliseconds(value: object, field: str, index: int) -> int:
+    def _milliseconds(
+        value: object, field: str, index: int, *, required: bool = False
+    ) -> int:
+        if value is None and required:
+            raise SolutionError(f"第 {index} 步缺少必填字段 {field}")
         if not isinstance(value, int) or not 0 <= value <= 30_000:
             raise SolutionError(f"第 {index} 步 {field} 必须在 0 到 30000 毫秒之间")
         return value

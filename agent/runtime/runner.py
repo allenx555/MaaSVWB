@@ -4,10 +4,16 @@ import logging
 import os
 import sys
 import time
+from functools import lru_cache
 from pathlib import Path
 
 from maa.context import Context
 
+from pipeline_nodes import (
+    PUZZLE_LIST,
+    PUZZLE_REWARD,
+    TUTORIAL_LEADER_OPERABLE,
+)
 from solution_engine.executor import SolutionExecutor
 from solution_engine.layout import BoardLayout
 from solution_engine.models import SolutionError
@@ -30,11 +36,9 @@ def resolve_project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-PROJECT_ROOT = resolve_project_root()
-
-
-def find_resource_root() -> Path:
-    candidates = (PROJECT_ROOT / "assets" / "resource", PROJECT_ROOT / "resource")
+def find_resource_root(project_root: Path | None = None) -> Path:
+    root = project_root or resolve_project_root()
+    candidates = (root / "assets" / "resource", root / "resource")
     for candidate in candidates:
         if candidate.is_dir():
             return candidate
@@ -52,13 +56,17 @@ def wait_for_puzzle_list(
     while time.monotonic() < deadline:
         if backend.is_stopping():
             return False
-        if backend.verify("识别_盘面解密列表"):
+        frame = backend.capture_frame()
+        if frame is None:
+            time.sleep(interval_ms / 1000)
+            continue
+        if backend.verify(PUZZLE_LIST, frame):
             return True
-        if backend.verify("识别_盘面解密奖励领取"):
-            print("[完成] 检测到首次通关奖励，点击继续", flush=True)
+        if backend.verify(PUZZLE_REWARD, frame):
+            LOGGER.info("[完成] 检测到首次通关奖励，点击继续")
             if not backend.tap(*reward_continue):
                 return False
-            time.sleep(1)
+            time.sleep(interval_ms / 1000)
             continue
         time.sleep(interval_ms / 1000)
     return False
@@ -66,10 +74,50 @@ def wait_for_puzzle_list(
 
 def reset_puzzle_for_debug(backend: MaaBackend, layout: BoardLayout) -> None:
     """从关卡内点击左侧重置按钮；只供显式调试流程调用。"""
-    print("[调试] 点击左侧重置按钮", flush=True)
+    LOGGER.info("[调试] 点击左侧重置按钮")
     if not backend.tap(*layout.fixed_point("puzzle_reset")):
         raise SolutionError("调试重置盘面失败")
     time.sleep(1_200 / 1000)
+
+
+@lru_cache(maxsize=4)
+def _load_layout(project_root: Path) -> BoardLayout:
+    return BoardLayout.load(find_resource_root(project_root) / "layouts" / "default.json")
+
+
+@lru_cache(maxsize=128)
+def _load_solution(project_root: Path, solution_id: str):
+    return SolutionRepository.for_project(project_root).load(solution_id)
+
+
+def _select_puzzle(
+    navigator: PuzzleNavigator,
+    navigation: dict,
+    list_categories: list[dict],
+    layout: BoardLayout,
+    search_swipes: int,
+    skip_completed: bool,
+) -> str | None:
+    list_top = layout.fixed_point("puzzle_list_top")
+    list_bottom = layout.fixed_point("puzzle_list_bottom")
+    for category in list_categories:
+        LOGGER.info("确认类别展开状态：%s", category["display_name"])
+        if not navigator.activate_category(
+            category,
+            list_top,
+            list_bottom,
+            search_swipes,
+            navigation["name_pattern"],
+        ):
+            return None
+    return navigator.select_puzzle(
+        navigation["name_pattern"],
+        *layout.fixed_point("puzzle_confirm"),
+        list_top,
+        list_bottom,
+        min(search_swipes, 6),
+        skip_completed=skip_completed,
+    )
 
 
 def run_solution(
@@ -79,18 +127,19 @@ def run_solution(
     skip_completed: bool = False,
     reset_before_execute: bool = False,
 ) -> bool:
-    solution = SolutionRepository.for_project(PROJECT_ROOT).load(solution_id)
-    layout = BoardLayout.load(find_resource_root() / "layouts" / "default.json")
-    backend = MaaBackend(context)
+    project_root = resolve_project_root()
+    solution = _load_solution(project_root, solution_id)
+    layout = _load_layout(project_root)
+    backend = MaaBackend(context, layout)
     navigator = PuzzleNavigator(backend)
 
-    if reset_before_execute and not backend.verify("识别_盘面解密列表"):
+    if reset_before_execute and not backend.verify(PUZZLE_LIST):
         reset_puzzle_for_debug(backend, layout)
 
     entered_from_list = False
     if solution.navigation is not None:
         display_name = solution.navigation["display_name"]
-        if backend.verify("识别_盘面解密列表"):
+        if backend.verify(PUZZLE_LIST):
             entered_from_list = True
             categories = solution.navigation.get("categories", [])
             tab_categories = [item for item in categories if item["scope"] == "tab"]
@@ -103,68 +152,46 @@ def run_solution(
                 tab_categories, list_top, list_bottom, search_swipes
             ):
                 raise SolutionError("未能确认盘面解密固定类别")
-            print("[导航 1/3] 已确认盘面解密固定标签", flush=True)
+            LOGGER.info("[导航 1/3] 已确认盘面解密固定标签")
 
-            for category in list_categories:
-                print(f"[导航 2/3] 确认类别展开状态：{category['display_name']}", flush=True)
-                if not navigator.activate_category(
-                    category,
-                    list_top,
-                    list_bottom,
-                    search_swipes,
-                    solution.navigation["name_pattern"],
-                ):
-                    raise SolutionError(
-                        f"未能展开盘面解密类别: {category['display_name']}"
-                    )
-
-            print(f"[导航 3/3] 查找题目：{display_name}", flush=True)
-            selection = navigator.select_puzzle(
-                solution.navigation["name_pattern"],
-                *layout.fixed_point("puzzle_confirm"),
-                list_top,
-                list_bottom,
-                min(search_swipes, 6),
-                skip_completed=skip_completed,
+            LOGGER.info("[导航 2/3] 确认列表类别")
+            LOGGER.info("[导航 3/3] 查找题目：%s", display_name)
+            selection = _select_puzzle(
+                navigator,
+                solution.navigation,
+                list_categories,
+                layout,
+                search_swipes,
+                skip_completed,
             )
             if selection == "completed":
-                print(f"[跳过] 已完成并领取奖励：{display_name}", flush=True)
+                LOGGER.info("[跳过] 已完成并领取奖励：%s", display_name)
                 return False
             selected = selection == "selected"
 
             if not selected:
-                for category in list_categories:
-                    print(f"[导航重试] 重新确认类别展开状态：{category['display_name']}", flush=True)
-                    if not navigator.activate_category(
-                        category,
-                        list_top,
-                        list_bottom,
-                        search_swipes,
-                        solution.navigation["name_pattern"],
-                    ):
-                        break
-                else:
-                    selection = navigator.select_puzzle(
-                        solution.navigation["name_pattern"],
-                        *layout.fixed_point("puzzle_confirm"),
-                        list_top,
-                        list_bottom,
-                        min(search_swipes, 6),
-                        skip_completed=skip_completed,
-                    )
-                    if selection == "completed":
-                        print(f"[跳过] 已完成并领取奖励：{display_name}", flush=True)
-                        return False
-                    selected = selection == "selected"
+                LOGGER.info("[导航重试] 重新确认类别并查找题目")
+                selection = _select_puzzle(
+                    navigator,
+                    solution.navigation,
+                    list_categories,
+                    layout,
+                    search_swipes,
+                    skip_completed,
+                )
+                if selection == "completed":
+                    LOGGER.info("[跳过] 已完成并领取奖励：%s", display_name)
+                    return False
+                selected = selection == "selected"
             if not selected:
                 raise SolutionError(f"未能在列表中识别盘面解密: {display_name}")
             time.sleep(solution.navigation.get("entry_wait_ms", 3500) / 1000)
         else:
             LOGGER.info("当前不在盘面解密列表，按已进入关卡继续")
 
-        print("[开场] 正在跳过教程提示并等待可操作盘面", flush=True)
+        LOGGER.info("[开场] 正在跳过教程提示并等待可操作盘面")
         if not backend.skip_dialogue(
-            "识别_教程主战者框可操作",
+            TUTORIAL_LEADER_OPERABLE,
             *layout.fixed_point("dialog_advance"),
             60,
             350,
@@ -172,17 +199,17 @@ def run_solution(
             ready_grace_ms=3000 if entered_from_list else 0,
         ):
             raise SolutionError("进入关卡后未能识别到可操作盘面")
-        print("[开场] 已进入可操作状态", flush=True)
+        LOGGER.info("[开场] 已进入可操作状态")
 
     LOGGER.info("开始执行解法: %s (%s)", solution.id, solution.name)
     emit_event("solution", f"开始执行：{solution.name}", state="starting", name=solution.id)
-    print(f"[解法] 开始执行：{solution.name}", flush=True)
+    LOGGER.info("[解法] 开始执行：%s", solution.name)
     SolutionExecutor(backend, LOGGER, layout).execute(solution)
     LOGGER.info("解法执行完成: %s", solution.id)
     emit_event("solution", f"解法动作完成：{solution.name}", state="succeeded", name=solution.id)
 
     if solution.navigation is not None:
-        print("[完成] 解法动作已执行，等待返回盘面解密列表", flush=True)
+        LOGGER.info("[完成] 解法动作已执行，等待返回盘面解密列表")
         if not wait_for_puzzle_list(
             backend, layout.fixed_point("puzzle_reward_continue")
         ):

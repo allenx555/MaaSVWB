@@ -18,6 +18,7 @@ from maa.toolkit import Toolkit  # noqa: E402
 from runtime.backend import MaaBackend  # noqa: E402
 from runtime.puzzle_navigator import PuzzleNavigator  # noqa: E402
 from runtime.session import choose_device, connect_controller, create_tasker  # noqa: E402
+from solution_engine.layout import BoardLayout  # noqa: E402
 
 
 class DumpPuzzleText(CustomAction):
@@ -51,7 +52,10 @@ class DumpPuzzleText(CustomAction):
                 if not controller.post_swipe(430, 260, 430, 570, 900).wait().succeeded:
                     raise RuntimeError("列表回顶失败")
                 time.sleep(1.1)
-        backend = MaaBackend(context)
+        layout = BoardLayout.load(
+            PROJECT_ROOT / "assets" / "resource" / "layouts" / "default.json"
+        )
+        backend = MaaBackend(context, layout)
         navigator = PuzzleNavigator(backend)
         for pattern in self.find_clicks:
             detail = navigator.find_in_scroll_list(

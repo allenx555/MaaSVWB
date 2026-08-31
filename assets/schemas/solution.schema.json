@@ -48,8 +48,17 @@
                         "properties": {
                             "display_name": { "type": "string", "minLength": 1 },
                             "pattern": { "type": "string", "minLength": 1 },
+                            "suffix_pattern": { "type": "string", "minLength": 1 },
                             "scope": { "enum": ["tab", "list"] }
                         },
+                        "allOf": [
+                            {
+                                "if": { "required": ["suffix_pattern"] },
+                                "then": {
+                                    "properties": { "scope": { "const": "list" } }
+                                }
+                            }
+                        ],
                         "additionalProperties": false
                     }
                 }

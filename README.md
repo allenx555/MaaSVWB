@@ -147,15 +147,17 @@ npx @nekosu/maa-tools check
 .\.dotnet\dotnet.exe build gui\MaaSVWB.Desktop\MaaSVWB.Desktop.csproj
 ```
 
-生成与 GitHub Release 一致的 Windows x64 发布目录：
+完整本地打包 Windows x64 版本（GUI、Agent、Runner 和资源）：
 
 ```powershell
-.\tools\package.ps1 -Version v0.2.0 -Os win -RuntimeIdentifier win-x64
+$version = git describe --tags --always --dirty
+.\tools\package.ps1 -Version $version -Os win -RuntimeIdentifier win-x64
 ```
 
-成品位于 `install/`。桌面前端以单文件 `MaaSVWB.exe` 发布，资源、目录和内置运行器
-分别位于 `resource/`、`catalog/` 与 `runtime/`。推送 `v*` 标签后，GitHub Actions 会为
-Windows、Linux 和 macOS 的 x64/ARM64 架构生成 ZIP。
+成品位于 `install/`：桌面前端以单文件 `MaaSVWB.exe` 发布，
+资源、目录和内置运行器分别位于 `resource/`、`catalog/`与 `runtime/`。
+推送 `v*` 标签后，GitHub Actions 会为 Windows、Linux 和 macOS 的
+x64/ARM64 架构生成 ZIP。
 
 贡献流程见[开发指南](./docs/zh_cn/develop/how_to_develop.md)和
 [PR 规范](./docs/zh_cn/develop/pull_request_guidelines.md)。可选 AI 开发工具见

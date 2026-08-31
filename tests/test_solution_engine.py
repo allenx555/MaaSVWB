@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sys
 import tempfile
 import unittest
@@ -142,7 +143,6 @@ class SolutionEngineTests(unittest.TestCase):
                 "category": "tutorial",
                 "reference_resolution": [1280, 720],
                 "steps": [
-                    {"action": "mulligan"},
                     {"action": "confirm_mulligan"},
                     {
                         "action": "read_energy",
@@ -169,6 +169,30 @@ class SolutionEngineTests(unittest.TestCase):
                 ("tap", 1170, 320),
             ],
         )
+
+    def test_unimplemented_mulligan_is_rejected_when_loading(self) -> None:
+        with self.assertRaisesRegex(SolutionError, "mulligan 尚未实现"):
+            Solution.from_dict(
+                {
+                    "id": "unsupported_mulligan",
+                    "name": "unsupported mulligan",
+                    "category": "tutorial",
+                    "reference_resolution": [1280, 720],
+                    "steps": [{"action": "mulligan"}],
+                }
+            )
+
+    def test_step_action_is_required_when_loading(self) -> None:
+        with self.assertRaisesRegex(SolutionError, "第 1 步 action"):
+            Solution.from_dict(
+                {
+                    "id": "missing_action",
+                    "name": "missing action",
+                    "category": "tutorial",
+                    "reference_resolution": [1280, 720],
+                    "steps": [{"duration_ms": 100}],
+                }
+            )
 
     def test_read_energy_rejects_unexpected_value(self) -> None:
         solution = Solution.from_dict(
@@ -523,6 +547,22 @@ class SolutionEngineTests(unittest.TestCase):
                     "navigation": {"display_name": "missing pattern"},
                     "steps": [{"action": "wait", "duration_ms": 1}],
                 }
+            )
+
+    def test_amulet_bishop_2_category_requires_separate_suffix(self) -> None:
+        for solution_id in (
+            "spec_amulet_bishop_2_01",
+            "spec_amulet_bishop_2_02",
+        ):
+            solution = SolutionRepository(self.solution_dir).load(solution_id)
+            assert solution.navigation is not None
+            category = solution.navigation["categories"][-1]
+            self.assertEqual(category["pattern"], "^护符主教$")
+            self.assertIsNotNone(
+                re.fullmatch(category["suffix_pattern"], "护符主教②")
+            )
+            self.assertIsNone(
+                re.fullmatch(category["suffix_pattern"], "护符主教①")
             )
 
     def test_attack_uses_follower_indexes(self) -> None:

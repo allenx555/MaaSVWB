@@ -19,7 +19,8 @@
             },
             {
                 "display_name": "护符主教2",
-                "pattern": "护符主教(2|②)",
+                "pattern": "^护符主教$",
+                "suffix_pattern": ".*(2|②)$",
                 "scope": "list"
             }
         ],

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .actions import SUPPORTED_ACTIONS
+
 
 class SolutionError(ValueError):
     """解法文件无效，或某一步执行失败。"""
@@ -51,6 +53,16 @@ class Solution:
             raise SolutionError("steps 必须是非空数组")
         if not all(isinstance(step, dict) for step in raw_steps):
             raise SolutionError("steps 中的每一步都必须是对象")
+        for index, step in enumerate(raw_steps, start=1):
+            action = step.get("action")
+            if not isinstance(action, str) or not action:
+                raise SolutionError(f"第 {index} 步 action 必须是非空字符串")
+            if action == "mulligan":
+                raise SolutionError(
+                    f"第 {index} 步动作 mulligan 尚未实现，不能作为有效解法加载"
+                )
+            if action not in SUPPORTED_ACTIONS:
+                raise SolutionError(f"第 {index} 步包含未知动作: {action!r}")
 
         category = data["category"]
         if category not in {"tutorial", "puzzle"}:
@@ -89,6 +101,16 @@ class Solution:
                 if category_item.get("scope") not in {"tab", "list"}:
                     raise SolutionError(
                         "navigation.categories[].scope 只能是 tab 或 list"
+                    )
+                suffix_pattern = category_item.get("suffix_pattern")
+                if suffix_pattern is not None and (
+                    category_item["scope"] != "list"
+                    or not isinstance(suffix_pattern, str)
+                    or not suffix_pattern
+                ):
+                    raise SolutionError(
+                        "navigation.categories[].suffix_pattern "
+                        "只能用于 list，且必须是非空字符串"
                     )
 
         return cls(

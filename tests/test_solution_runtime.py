@@ -17,6 +17,7 @@ from runtime.backend import MaaBackend  # noqa: E402
 from runtime.puzzle_navigator import PuzzleNavigator  # noqa: E402
 from runtime.runner import reset_puzzle_for_debug, wait_for_puzzle_list  # noqa: E402
 from actions.execute_solution import ExecuteSolution  # noqa: E402
+from solution_engine.layout import BoardLayout  # noqa: E402
 
 
 class _SuccessfulJob:
@@ -42,7 +43,10 @@ class SolutionRuntimeTests(unittest.TestCase):
                 side_effect=[SimpleNamespace(hit=hit) for hit in hits]
             ),
         )
-        backend = cast(Any, MaaBackend(cast(Any, context)))
+        layout = BoardLayout.load(
+            PROJECT_ROOT / "assets" / "resource" / "layouts" / "default.json"
+        )
+        backend = cast(Any, MaaBackend(cast(Any, context), layout))
         return backend, PuzzleNavigator(backend), controller
 
     @patch("runtime.runner.time.sleep")
@@ -61,13 +65,13 @@ class SolutionRuntimeTests(unittest.TestCase):
         self.assertTrue(result)
         backend.tap.assert_called_once_with(640, 650)
         self.assertEqual(
-            backend.verify.call_args_list,
+            [item.args[0] for item in backend.verify.call_args_list],
             [
-                call("识别_盘面解密列表"),
-                call("识别_盘面解密奖励领取"),
-                call("识别_盘面解密列表"),
-                call("识别_盘面解密奖励领取"),
-                call("识别_盘面解密列表"),
+                "识别_盘面解密列表",
+                "识别_盘面解密奖励领取",
+                "识别_盘面解密列表",
+                "识别_盘面解密奖励领取",
+                "识别_盘面解密列表",
             ],
         )
 
@@ -368,6 +372,76 @@ class SolutionRuntimeTests(unittest.TestCase):
         )
 
         self.assertTrue(result)
+        controller.post_click.assert_not_called()
+
+    @patch("runtime.puzzle_navigator.time.sleep")
+    def test_category_suffix_is_verified_with_precise_ocr_roi(
+        self, _sleep: MagicMock
+    ) -> None:
+        backend, navigator, controller = self.make_backend([])
+        category_box = SimpleNamespace(x=78, y=513, w=97, h=23)
+        base_detail = SimpleNamespace(hit=True, box=category_box)
+        suffix_detail = SimpleNamespace(hit=True, box=category_box)
+        backend.context.run_recognition.side_effect = [
+            base_detail,
+            base_detail,
+            suffix_detail,
+        ]
+        backend.category_expanded = MagicMock(return_value=True)
+
+        result = navigator.activate_category(
+            {
+                "display_name": "护符主教2",
+                "pattern": "^护符主教$",
+                "suffix_pattern": ".*(2|②)$",
+                "scope": "list",
+            },
+            (430, 260),
+            (430, 570),
+            0,
+        )
+
+        self.assertTrue(result)
+        suffix_override = backend.context.run_recognition.call_args_list[2].args[2]
+        self.assertEqual(
+            suffix_override["识别_盘面解密类别"],
+            {
+                "roi": [170, 505, 35, 39],
+                "only_rec": True,
+                "expected": ".*(2|②)$",
+                "threshold": 0.1,
+            },
+        )
+        controller.post_click.assert_not_called()
+
+    @patch("runtime.puzzle_navigator.time.sleep")
+    def test_category_suffix_mismatch_rejects_wrong_group(
+        self, _sleep: MagicMock
+    ) -> None:
+        backend, navigator, controller = self.make_backend([])
+        category_box = SimpleNamespace(x=78, y=513, w=97, h=23)
+        base_detail = SimpleNamespace(hit=True, box=category_box)
+        suffix_miss = SimpleNamespace(hit=False, box=None)
+        backend.context.run_recognition.side_effect = [
+            base_detail,
+            base_detail,
+            suffix_miss,
+        ]
+
+        result = navigator.activate_category(
+            {
+                "display_name": "护符主教2",
+                "pattern": "^护符主教$",
+                "suffix_pattern": ".*(2|②)$",
+                "scope": "list",
+            },
+            (430, 260),
+            (430, 570),
+            0,
+            max_clicks=1,
+        )
+
+        self.assertFalse(result)
         controller.post_click.assert_not_called()
 
     @patch("runtime.puzzle_navigator.time.sleep")

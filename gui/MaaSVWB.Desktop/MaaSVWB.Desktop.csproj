@@ -25,6 +25,5 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.20" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
 </Project>

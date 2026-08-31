@@ -9,6 +9,7 @@
         "puzzle_reward_continue": [640, 650],
         "puzzle_list_top": [430, 260],
         "puzzle_list_bottom": [430, 570],
+        "puzzle_category_arrow_probe": [500, 14],
         "ally_leader": [640, 620],
         "enemy_leader": [640, 70],
         "dialog_advance": [640, 635],
@@ -18,7 +19,9 @@
     },
     "regions": {
         "hand_and_board": [240, 300, 800, 410],
-        "battle_board": [300, 140, 680, 420]
+        "battle_board": [300, 140, 680, 420],
+        "enemy_follower_stats": [250, 245, 780, 65],
+        "ally_follower_stats": [250, 405, 780, 80]
     },
     "indexed": {
         "hand": {

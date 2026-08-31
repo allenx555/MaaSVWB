@@ -8,6 +8,9 @@ import numpy as np
 from maa.context import Context
 from maa.pipeline import JWaitFreezes
 
+from pipeline_nodes import CURRENT_ENERGY, CURRENT_HAND_COUNT
+from solution_engine.layout import BoardLayout
+
 
 LOGGER = logging.getLogger("maasvwb.solution")
 
@@ -15,9 +18,10 @@ LOGGER = logging.getLogger("maasvwb.solution")
 class MaaBackend:
     """把通用解法动作适配到 MaaFramework Controller。"""
 
-    def __init__(self, context: Context) -> None:
+    def __init__(self, context: Context, layout: BoardLayout) -> None:
         self.context = context
         self.controller = context.tasker.controller
+        self.layout = layout
 
     @staticmethod
     def _wait_success(job) -> bool:
@@ -35,8 +39,8 @@ class MaaBackend:
     def key(self, keycode: int) -> bool:
         return self._wait_success(self.controller.post_click_key(keycode))
 
-    def verify(self, pipeline_node: str) -> bool:
-        detail = self.recognize(pipeline_node)
+    def verify(self, pipeline_node: str, frame=None) -> bool:
+        detail = self.recognize(pipeline_node, frame=frame)
         return bool(detail and detail.hit)
 
     def capture_frame(self):
@@ -48,7 +52,7 @@ class MaaBackend:
 
     def read_hand_count(self) -> int | None:
         """从盘面左下角牌堆状态栏读取当前手牌数。"""
-        detail = self.recognize("识别_当前手牌数量")
+        detail = self.recognize(CURRENT_HAND_COUNT)
         result = detail.best_result if detail and detail.hit else None
         text = getattr(result, "text", "")
         match = re.search(r"\d+", text)
@@ -64,7 +68,7 @@ class MaaBackend:
 
     def read_energy_points(self) -> tuple[int, int] | None:
         """读取玩家侧能量点，返回（当前值，上限）。"""
-        detail = self.recognize("识别_当前能量点")
+        detail = self.recognize(CURRENT_ENERGY)
         result = detail.best_result if detail and detail.hit else None
         text = getattr(result, "text", "")
         normalized = text.translate(str.maketrans({"I": "1", "l": "1", "|": "/"}))
@@ -81,18 +85,21 @@ class MaaBackend:
 
     def read_follower_count(self, side: str) -> int | None:
         """根据随从左下角蓝色攻击力数字，读取当前一侧的随从数量。"""
-        rows = {
-            "enemy": (245, 310),
-            "ally": (405, 485),
+        regions = {
+            "enemy": "enemy_follower_stats",
+            "ally": "ally_follower_stats",
         }
-        if side not in rows:
+        if side not in regions:
             raise ValueError(f"未知场上阵营: {side}")
         frame = self.capture_frame()
         if frame is None or frame.ndim < 3:
             return None
 
-        y1, y2 = rows[side]
-        crop = frame[y1:y2].astype(np.float32)
+        region_x, y, width, height = self.layout.region(regions[side])
+        if region_x + width > frame.shape[1] or y + height > frame.shape[0]:
+            LOGGER.error("随从计数区域越界: %s", (region_x, y, width, height))
+            return None
+        crop = frame[y : y + height, region_x : region_x + width].astype(np.float32)
         blue = crop[:, :, 0]
         green = crop[:, :, 1]
         red = crop[:, :, 2]
@@ -103,15 +110,13 @@ class MaaBackend:
         )
         histogram = np.count_nonzero(stat_pixels, axis=0).astype(np.float32)
         score = np.convolve(histogram, np.ones(17, dtype=np.float32), mode="same")
-        score[:250] = 0
-        score[1030:] = 0
 
         peaks: list[int] = []
         while len(peaks) < 5:
             x = int(np.argmax(score))
             if score[x] < 420:
                 break
-            peaks.append(x)
+            peaks.append(x + region_x)
             score[max(0, x - 75) : min(len(score), x + 76)] = 0
         peaks.sort()
         if not peaks:
@@ -170,9 +175,10 @@ class MaaBackend:
         """等待识别框出现并点击其中心。"""
         deadline = time.monotonic() + timeout_ms / 1000
         while time.monotonic() < deadline:
-            if self._stopping():
+            if self.is_stopping():
                 return False
-            detail = self.recognize(pipeline_node)
+            frame = self.capture_frame()
+            detail = self.recognize(pipeline_node, frame=frame)
             if detail and detail.hit and detail.box is not None:
                 box = detail.box
                 return self.tap(box.x + box.w // 2, box.y + box.h // 2)
@@ -185,8 +191,10 @@ class MaaBackend:
         if frame is None or frame.ndim < 3:
             return None
 
-        arrow_center_x = 500
-        arrow_center_y = category_box.y + category_box.h // 2 + 14
+        arrow_center_x, arrow_y_offset = self.layout.fixed_point(
+            "puzzle_category_arrow_probe"
+        )
+        arrow_center_y = category_box.y + category_box.h // 2 + arrow_y_offset
         left = arrow_center_x - 20
         top = arrow_center_y - 21
         right = arrow_center_x + 20
@@ -217,14 +225,19 @@ class MaaBackend:
         )
         return expanded
 
-    def recognize(self, pipeline_node: str, override: dict | None = None):
-        capture = self.controller.post_screencap()
-        capture.wait()
-        if not capture.succeeded:
+    def recognize(
+        self,
+        pipeline_node: str,
+        override: dict | None = None,
+        *,
+        frame=None,
+    ):
+        image = self.capture_frame() if frame is None else frame
+        if image is None:
             return None
         return self.context.run_recognition(
             pipeline_node,
-            self.controller.cached_image,
+            image,
             override or {},
         )
 
@@ -236,9 +249,10 @@ class MaaBackend:
     ) -> bool:
         deadline = time.monotonic() + timeout_ms / 1000
         while time.monotonic() < deadline:
-            if self._stopping():
+            if self.is_stopping():
                 return False
-            detail = self.recognize(pipeline_node)
+            frame = self.capture_frame()
+            detail = self.recognize(pipeline_node, frame=frame)
             if detail and detail.hit:
                 return True
             time.sleep(interval_ms / 1000)
@@ -252,9 +266,10 @@ class MaaBackend:
     ) -> bool:
         deadline = time.monotonic() + timeout_ms / 1000
         while time.monotonic() < deadline:
-            if self._stopping():
+            if self.is_stopping():
                 return False
-            detail = self.recognize(pipeline_node)
+            frame = self.capture_frame()
+            detail = self.recognize(pipeline_node, frame=frame)
             if not detail or not detail.hit:
                 return True
             time.sleep(interval_ms / 1000)
@@ -288,7 +303,7 @@ class MaaBackend:
         deadline = time.monotonic() + timeout_ms / 1000
         reference_crop = reference[y : y + height, x : x + width].astype(np.float32)
         while time.monotonic() < deadline:
-            if self._stopping():
+            if self.is_stopping():
                 return False
             current = self.capture_frame()
             if current is None:
@@ -305,14 +320,11 @@ class MaaBackend:
             time.sleep(0.15)
         return False
 
-    def _stopping(self) -> bool:
+    def is_stopping(self) -> bool:
         try:
             return bool(self.context.tasker.stopping)
         except (AttributeError, RuntimeError):
             return False
-
-    def is_stopping(self) -> bool:
-        return self._stopping()
 
     def skip_dialogue(
         self,
@@ -329,9 +341,10 @@ class MaaBackend:
         clicks = 0
         ready_since: float | None = None
         while True:
-            if self._stopping():
+            if self.is_stopping():
                 return False
-            detail = self.recognize(pipeline_node)
+            frame = self.capture_frame()
+            detail = self.recognize(pipeline_node, frame=frame)
             if detail and detail.hit:
                 if ready_since is None:
                     ready_since = time.monotonic()

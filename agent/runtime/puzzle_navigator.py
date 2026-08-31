@@ -3,6 +3,16 @@ from __future__ import annotations
 import logging
 import time
 
+from pipeline_nodes import (
+    PUZZLE_CATEGORY,
+    PUZZLE_COMPLETED,
+    PUZZLE_CONFIRM,
+    PUZZLE_CONFIRM_ENABLED,
+    PUZZLE_NAME,
+    PUZZLE_REWARD_CLAIMED,
+    PUZZLE_TAB,
+)
+
 from .backend import MaaBackend
 
 
@@ -11,6 +21,10 @@ LIST_SWIPE_DURATION_MS = 900
 LIST_SWIPE_SETTLE_MS = 1400
 LIST_OCR_STABLE_MS = 700
 LIST_CLICK_SETTLE_MS = 1200
+CATEGORY_SUFFIX_LEFT_OVERLAP = 5
+CATEGORY_SUFFIX_TOP_PADDING = 8
+CATEGORY_SUFFIX_WIDTH = 35
+CATEGORY_SUFFIX_VERTICAL_PADDING = 16
 
 
 class PuzzleNavigator:
@@ -84,7 +98,7 @@ class PuzzleNavigator:
         skip_completed: bool = False,
     ) -> str | None:
         detail = self.find_in_scroll_list(
-            "识别_盘面解密名称", name_pattern, list_top, list_bottom, max_swipes
+            PUZZLE_NAME, name_pattern, list_top, list_bottom, max_swipes
         )
         if detail is None:
             return None
@@ -97,7 +111,7 @@ class PuzzleNavigator:
         if not self.backend.tap(box.x + box.w // 2, box.y + box.h // 2):
             return None
         time.sleep(LIST_CLICK_SETTLE_MS / 1000)
-        if not self.backend.verify("识别_盘面解密决定可用"):
+        if not self.backend.verify(PUZZLE_CONFIRM_ENABLED):
             LOGGER.error("点击题名后，决定按钮没有进入亮蓝可用状态")
             return None
         return "selected" if self.backend.tap(confirm_x, confirm_y) else None
@@ -110,12 +124,12 @@ class PuzzleNavigator:
         row_top = max(190, box.y - 45)
         row_height = max(75, min(100, box.h + 65))
         complete = self.backend.recognize(
-            "识别_盘面解密完成标记",
-            {"识别_盘面解密完成标记": {"roi": [55, row_top, 105, row_height]}},
+            PUZZLE_COMPLETED,
+            {PUZZLE_COMPLETED: {"roi": [55, row_top, 105, row_height]}},
         )
         claimed = self.backend.recognize(
-            "识别_盘面解密已领取",
-            {"识别_盘面解密已领取": {"roi": [390, row_top, 130, row_height]}},
+            PUZZLE_REWARD_CLAIMED,
+            {PUZZLE_REWARD_CLAIMED: {"roi": [390, row_top, 130, row_height]}},
         )
         completed = bool(complete and complete.hit and claimed and claimed.hit)
         LOGGER.info(
@@ -137,7 +151,7 @@ class PuzzleNavigator:
     ) -> bool:
         for attempt in range(1, max_clicks + 1):
             detail = self.find_in_scroll_list(
-                "识别_盘面解密类别",
+                PUZZLE_CATEGORY,
                 category["pattern"],
                 list_top,
                 list_bottom,
@@ -147,13 +161,23 @@ class PuzzleNavigator:
                 LOGGER.error("未识别到盘面解密类别: %s", category["display_name"])
                 return False
             box = detail.box
+            suffix_pattern = category.get("suffix_pattern")
+            if suffix_pattern and not self._category_suffix_matches(
+                box, suffix_pattern
+            ):
+                LOGGER.warning(
+                    "类别主体已识别，但右侧编号不匹配: %s（第 %d 次）",
+                    category["display_name"],
+                    attempt,
+                )
+                continue
             expanded = self.backend.category_expanded(box)
             if expanded is True:
                 LOGGER.info("类别已经展开，无需点击: %s", category["display_name"])
                 return True
             if expanded is None and puzzle_pattern:
                 puzzle = self.find_in_scroll_list(
-                    "识别_盘面解密名称",
+                    PUZZLE_NAME,
                     puzzle_pattern,
                     list_top,
                     list_bottom,
@@ -171,7 +195,7 @@ class PuzzleNavigator:
             time.sleep(LIST_CLICK_SETTLE_MS / 1000)
             if puzzle_pattern:
                 puzzle = self.find_in_scroll_list(
-                    "识别_盘面解密名称",
+                    PUZZLE_NAME,
                     puzzle_pattern,
                     list_top,
                     list_bottom,
@@ -179,10 +203,31 @@ class PuzzleNavigator:
                 )
                 if puzzle is not None:
                     return True
-            elif self.backend.wait_recognition("识别_盘面解密决定", 1500, 250):
+            elif self.backend.wait_recognition(PUZZLE_CONFIRM, 1500, 250):
                 return True
         LOGGER.error("点击后仍未找到目标题目: %s", category["display_name"])
         return False
+
+    def _category_suffix_matches(self, box, expected: str) -> bool:
+        """用精确小 ROI 绕过 OCR 检测模型对圈号漏框的问题。"""
+        roi = [
+            box.x + box.w - CATEGORY_SUFFIX_LEFT_OVERLAP,
+            box.y - CATEGORY_SUFFIX_TOP_PADDING,
+            CATEGORY_SUFFIX_WIDTH,
+            box.h + CATEGORY_SUFFIX_VERTICAL_PADDING,
+        ]
+        detail = self.backend.recognize(
+            PUZZLE_CATEGORY,
+            {
+                PUZZLE_CATEGORY: {
+                    "roi": roi,
+                    "only_rec": True,
+                    "expected": expected,
+                    "threshold": 0.1,
+                }
+            },
+        )
+        return bool(detail and detail.hit)
 
     def confirm_categories(
         self,
@@ -192,7 +237,7 @@ class PuzzleNavigator:
         max_swipes: int,
     ) -> bool:
         for category in categories:
-            node = "识别_盘面解密标签" if category["scope"] == "tab" else "识别_盘面解密类别"
+            node = PUZZLE_TAB if category["scope"] == "tab" else PUZZLE_CATEGORY
             if category["scope"] == "list":
                 detail = self.find_in_scroll_list(
                     node, category["pattern"], list_top, list_bottom, max_swipes
