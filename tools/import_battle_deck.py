@@ -333,7 +333,6 @@ def _build_profile(
         "mulligan": {
             "enabled": True,
             "keep": mulligan_keep,
-            "maximum_keep_cost": 2,
         },
         "safety": {
             "max_actions_per_turn": 30,

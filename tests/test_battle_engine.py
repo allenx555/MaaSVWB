@@ -108,7 +108,6 @@ def profile_data() -> dict:
         "mulligan": {
             "enabled": True,
             "keep": ["basic_follower"],
-            "maximum_keep_cost": 2,
         },
         "safety": {
             "max_actions_per_turn": 30,
@@ -147,6 +146,32 @@ class BattleProfileTests(unittest.TestCase):
         self.assertIsNotNone(target)
         assert target is not None
         self.assertEqual(target.type, "enemy_leader")
+
+    def test_mulligan_replaces_every_card_not_in_explicit_keep_list(self) -> None:
+        profile = self.load_profile(profile_data())
+        policy = BattlePolicy(profile, self.catalog)
+
+        replacements = policy.choose_mulligan_replacements(
+            (
+                ObservedCard("leader_burn", 1, True),
+                ObservedCard("basic_follower", 2, True),
+                ObservedCard("setup_spell", 3, True),
+            )
+        )
+
+        self.assertEqual(replacements, (1, 3))
+
+    def test_disabled_mulligan_never_replaces_cards(self) -> None:
+        data = profile_data()
+        data["mulligan"]["enabled"] = False
+        profile = self.load_profile(data)
+        policy = BattlePolicy(profile, self.catalog)
+
+        replacements = policy.choose_mulligan_replacements(
+            (ObservedCard("leader_burn", 1, True),)
+        )
+
+        self.assertEqual(replacements, ())
 
     def test_unknown_card_is_rejected(self) -> None:
         data = profile_data()

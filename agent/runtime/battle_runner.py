@@ -6,13 +6,18 @@ from dataclasses import dataclass
 from enum import Enum
 
 from battle_engine.models import BattleState, CardCatalog
-from battle_engine.observer import HandText, ObservedHandCard, parse_hand_texts
+from battle_engine.observer import (
+    ObservedHandCard,
+    parse_hand_texts,
+    recognition_results_to_hand_texts,
+)
 from battle_engine.policy import BattlePolicy
 from pipeline_nodes import (
     BATTLE_DEFEAT,
     BATTLE_END_CONFIRM,
     BATTLE_HAND_NAMES,
     BATTLE_MULLIGAN,
+    BATTLE_MULLIGAN_NAMES,
     BATTLE_PLAYER_TURN,
     BATTLE_VICTORY,
 )
@@ -75,13 +80,71 @@ class BattleRunner:
             if self.backend.verify(BATTLE_PLAYER_TURN, frame):
                 return
             if self.backend.verify(BATTLE_MULLIGAN, frame):
-                LOGGER.info("[开局] 不交换手牌，直接决定")
+                self._apply_mulligan(frame)
                 if not self.backend.tap(*self.layout.fixed_point("mulligan_confirm")):
                     raise SolutionError("换牌阶段点击决定失败")
                 time.sleep(4.0)
                 continue
             time.sleep(0.5)
         raise SolutionError("120 秒内未能进入己方回合")
+
+    def _apply_mulligan(self, frame) -> None:
+        if not self.policy.profile.mulligan.enabled:
+            LOGGER.info("[开局] 当前策略不交换起手，直接决定")
+            return
+
+        detail = self.backend.recognize(BATTLE_MULLIGAN_NAMES, frame=frame)
+        if not detail or not detail.hit:
+            LOGGER.warning("[开局] 未识别到起手卡名，安全保留全部手牌")
+            return
+        source_y = self.layout.fixed_point("mulligan_card_anchor")[1]
+        target_y = self.layout.fixed_point("mulligan_replace_anchor")[1]
+        texts = recognition_results_to_hand_texts(detail.all_results)
+        observed = parse_hand_texts(texts, self.catalog, energy=20, source_y=source_y)
+        replacement_indexes = frozenset(
+            self.policy.choose_mulligan_replacements(
+                tuple(item.card for item in observed)
+            )
+        )
+        replacements = tuple(
+            item for item in observed if item.card.hand_index in replacement_indexes
+        )
+        LOGGER.info(
+            "[开局] 起手识别：%s；交换：%s",
+            ", ".join(item.name for item in observed) or "无",
+            ", ".join(item.name for item in replacements) or "无",
+        )
+
+        for item in replacements:
+            changed = False
+            for attempt in range(self.policy.profile.safety.max_retries_per_action + 1):
+                before = self.backend.capture_frame()
+                if before is None:
+                    continue
+                if not self.backend.swipe(
+                    *item.source,
+                    item.source[0],
+                    target_y,
+                    450,
+                ):
+                    continue
+                changed = self.backend.wait_changed(
+                    before,
+                    self.layout.region("mulligan_selection"),
+                    3_000,
+                    1.0,
+                    250,
+                )
+                if changed:
+                    break
+                LOGGER.warning(
+                    "[开局] 选择交换卡牌后画面未变化：%s（第 %d 次）",
+                    item.name,
+                    attempt + 1,
+                )
+            if not changed:
+                raise SolutionError(f"选择交换起手失败: {item.name}")
+            time.sleep(0.4)
 
     def _play_until_settlement(self) -> BattleOutcome:
         previous_maximum: int | None = None
@@ -252,20 +315,7 @@ class BattleRunner:
             detail = self.backend.recognize(BATTLE_HAND_NAMES, frame=frame)
         if not detail or not detail.hit:
             return ()
-        texts = []
-        for result in detail.all_results:
-            text = getattr(result, "text", "")
-            box = getattr(result, "box", None)
-            if not text or box is None:
-                continue
-            if isinstance(box, (list, tuple)) and len(box) == 4:
-                x, y, width, height = (int(value) for value in box)
-            else:
-                x = int(getattr(box, "x"))
-                y = int(getattr(box, "y"))
-                width = int(getattr(box, "w"))
-                height = int(getattr(box, "h"))
-            texts.append(HandText(text, x, y, width, height))
+        texts = recognition_results_to_hand_texts(detail.all_results)
         observed = parse_hand_texts(texts, self.catalog, energy)
         LOGGER.info(
             "[手牌] %s",

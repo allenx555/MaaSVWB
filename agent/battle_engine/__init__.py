@@ -8,7 +8,13 @@ from .models import (
     PlannedCardPlay,
 )
 from .policy import BattlePolicy
-from .observer import HandText, ObservedHandCard, match_card_name, parse_hand_texts
+from .observer import (
+    HandText,
+    ObservedHandCard,
+    match_card_name,
+    parse_hand_texts,
+    recognition_results_to_hand_texts,
+)
 from .repository import BattleProfileRepository, CardCatalogRepository
 
 __all__ = [
@@ -26,4 +32,5 @@ __all__ = [
     "PlannedCardPlay",
     "match_card_name",
     "parse_hand_texts",
+    "recognition_results_to_hand_texts",
 ]

@@ -3,12 +3,18 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 
-from battle_engine.observer import HandText, match_card_name, parse_hand_texts  # noqa: E402
+from battle_engine.observer import (  # noqa: E402
+    HandText,
+    match_card_name,
+    parse_hand_texts,
+    recognition_results_to_hand_texts,
+)
 from battle_engine.repository import CardCatalogRepository  # noqa: E402
 
 
@@ -40,6 +46,25 @@ class BattleObserverTests(unittest.TestCase):
         self.assertEqual([item.card.hand_index for item in observed], [1, 2, 3])
         self.assertEqual([item.card.playable for item in observed], [True, True, False])
         self.assertEqual([item.source for item in observed], [(340, 665), (530, 665), (750, 665)])
+
+    def test_maa_ocr_results_are_converted_to_hand_texts(self) -> None:
+        texts = recognition_results_to_hand_texts(
+            (
+                SimpleNamespace(text="怨灵", box=[300, 400, 80, 30]),
+                SimpleNamespace(
+                    text="蛇神之怒",
+                    box=SimpleNamespace(x=600, y=400, w=100, h=30),
+                ),
+            )
+        )
+
+        self.assertEqual(
+            texts,
+            (
+                HandText("怨灵", 300, 400, 80, 30),
+                HandText("蛇神之怒", 600, 400, 100, 30),
+            ),
+        )
 
 
 if __name__ == "__main__":

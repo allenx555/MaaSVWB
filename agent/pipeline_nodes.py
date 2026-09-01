@@ -25,6 +25,7 @@ DUNGEON_REPLAY = "识别_地城再战按钮"
 DUNGEON_RETURN = "识别_地城返回按钮"
 
 BATTLE_MULLIGAN = "识别_基础战斗换牌页"
+BATTLE_MULLIGAN_NAMES = "识别_基础战斗起手卡名"
 BATTLE_PLAYER_TURN = "识别_基础战斗玩家回合"
 BATTLE_END_CONFIRM = "识别_基础战斗结束回合确认"
 BATTLE_HAND_NAMES = "识别_基础战斗手牌名称"

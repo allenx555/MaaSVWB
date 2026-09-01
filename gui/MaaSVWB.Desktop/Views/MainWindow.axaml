@@ -62,7 +62,18 @@
                 <StackPanel Spacing="7">
                   <TextBlock FontWeight="SemiBold" Foreground="#80601D" Text="启动前检查" />
                   <TextBlock Classes="caption" TextWrapping="Wrap"
-                             Text="请将模拟器设为 1280×720 横屏，并停在地城试炼关卡列表或一场已开始的玩家回合。当前版本直接使用游戏内已选牌组。" />
+                             Text="请将模拟器设为 1280×720 横屏。开始前必须在游戏中提前选定要使用的无限制牌组；当前版本不会检查牌组名称，也不会自动选择或切换牌组。" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap"
+                             Text="选好牌组后，请停在地城试炼关卡列表。快梦策略会保留全部 1 费起手，并交换其余成功识别的卡牌。" />
+                  <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="#80601D"
+                             Text="推荐无限制牌组码（快梦）" />
+                  <TextBox MinHeight="68"
+                           IsReadOnly="True"
+                           TextWrapping="Wrap"
+                           Text="{Binding DungeonRecommendedDeckCode}"
+                           ToolTip.Tip="点击文本框后按 Ctrl+A 全选，再按 Ctrl+C 复制" />
+                  <TextBlock Classes="caption" TextWrapping="Wrap"
+                             Text="点击上方牌组码后按 Ctrl+A、Ctrl+C 复制，再到游戏的“卡牌 → 新牌组 → 使用牌组码”中粘贴。" />
                 </StackPanel>
               </Border>
 
@@ -76,7 +87,7 @@
             <StackPanel Spacing="12">
               <TextBlock Classes="sectionTitle" Text="当前首版规则" />
               <TextBlock Classes="caption" TextWrapping="Wrap"
-                         Text="确认牌组后直接决定，不交换起手；按策略优先级使用卡牌；敌方有守护时先攻击守护，否则攻击主战者；无动作后结束回合。" />
+                         Text="换牌保留全部 1 费卡；大游戏世界最优先，其他随从优先于法术，挥毫的怪物最后使用；持续出牌以尽量用完费用；敌方有守护时先处理守护，否则攻击主战者。" />
               <Border Height="1" Margin="0,6" Background="#E5E9ED" />
               <TextBlock FontWeight="SemiBold" Text="结算循环" />
               <TextBlock Classes="caption" TextWrapping="Wrap"

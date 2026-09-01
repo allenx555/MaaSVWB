@@ -65,6 +65,25 @@ class ObservedHandCard:
     score: float
 
 
+def recognition_results_to_hand_texts(results: Iterable[object]) -> tuple[HandText, ...]:
+    """把 Maa OCR 结果转换为与具体玩法无关的卡名文本框。"""
+    texts: list[HandText] = []
+    for result in results:
+        text = getattr(result, "text", "")
+        box = getattr(result, "box", None)
+        if not text or box is None:
+            continue
+        if isinstance(box, (list, tuple)) and len(box) == 4:
+            x, y, width, height = (int(value) for value in box)
+        else:
+            x = int(getattr(box, "x"))
+            y = int(getattr(box, "y"))
+            width = int(getattr(box, "w"))
+            height = int(getattr(box, "h"))
+        texts.append(HandText(str(text), x, y, width, height))
+    return tuple(texts)
+
+
 def parse_hand_texts(
     texts: Iterable[HandText],
     catalog: CardCatalog,

@@ -122,6 +122,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public string DungeonBattleCountText =>
         $"目标完成 {DungeonBattleCount} 场胜利；失败不会计入战斗次数";
 
+    public string DungeonRecommendedDeckCode =>
+        "2.5.e3ls.e3ls.e3ls.e4Gg.e4Gg.e4Gg.d6jm.d6jm.d6jm.fPCm.fPCm.fPCm." +
+        "eSAM.eSAM.eSAM.cLuw.cLuw.cLuw.eeNc.eeNc.eeNc.fPCw.fPCw.fPCw.fnd6." +
+        "fnd6.fnd6.ckrU.ckrU.ckrU.eGFs.eGFs.eGFs.ckJ6.ckJ6.ckJ6.ckoq.ckoq." +
+        "d7D0.d7D0";
+
     public string LogText
     {
         get => _logText;

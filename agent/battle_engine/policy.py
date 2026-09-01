@@ -62,6 +62,15 @@ class BattlePolicy:
         )
         return candidates[0].plan
 
+    def choose_mulligan_replacements(
+        self, hand: tuple[ObservedCard, ...]
+    ) -> tuple[int, ...]:
+        """返回应交换的起手序号；未识别卡牌不会出现在 hand 中，因而会安全保留。"""
+        if not self.profile.mulligan.enabled:
+            return ()
+        keep = frozenset(self.profile.mulligan.keep)
+        return tuple(card.hand_index for card in hand if card.card_id not in keep)
+
     def _plan_single(
         self, observed: ObservedCard, state: BattleState
     ) -> ActionPlan | None:

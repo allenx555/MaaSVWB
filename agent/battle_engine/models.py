@@ -384,12 +384,11 @@ class EvolutionPolicy:
 class MulliganPolicy:
     enabled: bool = True
     keep: tuple[str, ...] = ()
-    maximum_keep_cost: int = 2
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "MulliganPolicy":
         label = "mulligan"
-        _reject_unknown(data, {"enabled", "keep", "maximum_keep_cost"}, label)
+        _reject_unknown(data, {"enabled", "keep"}, label)
         keep = tuple(
             _require_id(item, "mulligan.keep[]")
             for item in _as_list(data.get("keep", []), "mulligan.keep")
@@ -399,12 +398,6 @@ class MulliganPolicy:
         return cls(
             enabled=_optional_bool(data, "enabled", True, label),
             keep=keep,
-            maximum_keep_cost=_require_int(
-                data.get("maximum_keep_cost", 2),
-                "mulligan.maximum_keep_cost",
-                0,
-                20,
-            ),
         )
 
 

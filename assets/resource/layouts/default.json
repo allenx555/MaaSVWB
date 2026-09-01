@@ -14,6 +14,8 @@
         "enemy_leader": [640, 70],
         "dialog_advance": [640, 635],
         "mulligan_confirm": [1150, 360],
+        "mulligan_card_anchor": [640, 520],
+        "mulligan_replace_anchor": [640, 210],
         "dungeon_stage_first": [640, 400],
         "dungeon_deck_decide": [770, 550],
         "extra_energy": [1165, 515],
@@ -21,6 +23,7 @@
     },
     "regions": {
         "hand_and_board": [240, 300, 800, 410],
+        "mulligan_selection": [150, 100, 800, 540],
         "battle_board": [300, 140, 680, 420],
         "enemy_follower_stats": [250, 245, 780, 65],
         "ally_follower_stats": [250, 405, 780, 80]

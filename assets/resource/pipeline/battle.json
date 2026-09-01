@@ -5,6 +5,13 @@
         "expected": ["交换", "交換"],
         "threshold": 0.3
     },
+    "识别_基础战斗起手卡名": {
+        "recognition": "OCR",
+        "roi": [150, 390, 800, 80],
+        "expected": ".+",
+        "threshold": 0.15,
+        "order_by": "Horizontal"
+    },
     "识别_基础战斗玩家回合": {
         "recognition": "OCR",
         "roi": [1080, 210, 190, 210],
