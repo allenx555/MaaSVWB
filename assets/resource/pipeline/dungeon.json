@@ -17,31 +17,6 @@
         "expected": ["确认牌组", "確認牌組"],
         "threshold": 0.3
     },
-    "识别_地城换牌页": {
-        "recognition": "OCR",
-        "roi": [70, 20, 1100, 410],
-        "expected": ["交换", "交換"],
-        "threshold": 0.3
-    },
-    "识别_地城玩家回合": {
-        "recognition": "OCR",
-        "roi": [1080, 210, 190, 210],
-        "expected": ["结束", "結束", "回合"],
-        "threshold": 0.25
-    },
-    "识别_地城结束回合确认": {
-        "recognition": "OCR",
-        "roi": [650, 500, 250, 100],
-        "expected": ["结束", "結束"],
-        "threshold": 0.25
-    },
-    "识别_地城手牌名称": {
-        "recognition": "OCR",
-        "roi": [260, 545, 800, 90],
-        "expected": ".+",
-        "threshold": 0.15,
-        "order_by": "Horizontal"
-    },
     "识别_地城再战按钮": {
         "recognition": "OCR",
         "roi": [1000, 340, 230, 250],
@@ -52,18 +27,6 @@
         "recognition": "OCR",
         "roi": [1000, 570, 270, 120],
         "expected": ["返回地城"],
-        "threshold": 0.3
-    },
-    "识别_地城胜利结算": {
-        "recognition": "OCR",
-        "roi": [650, 150, 600, 430],
-        "expected": ["获得银币.*", "獲得銀幣.*", "累计地城银币", "累計地城銀幣", "确认奖励内容", "確認獎勵內容"],
-        "threshold": 0.25
-    },
-    "识别_地城失败结算": {
-        "recognition": "OCR",
-        "roi": [300, 20, 680, 240],
-        "expected": ["失败", "失敗"],
         "threshold": 0.3
     },
     "执行地城试炼": {

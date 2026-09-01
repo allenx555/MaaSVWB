@@ -133,6 +133,11 @@ tests/                         解法模型、执行器和运行时测试
 tools/                         环境、检查、调试和发布脚本
 ```
 
+基础对战状态机位于 `agent/runtime/battle_runner.py`，负责换牌确认、能量与新回合判断、
+出牌、攻击、结束回合和胜负识别。`agent/runtime/dungeon_runner.py` 只处理地城入口、
+当前牌组确认和结算后的连战，并通过组合 `BattleRunner` 复用上述能力；地城连战计数与
+连续失败保护单独位于 `agent/runtime/dungeon_session.py`。
+
 `assets/interface.base.json` 是通用 MaaFramework Project Interface 的基础配置；
 `assets/interface.json` 由目录与已有解法自动生成。正式桌面前端以
 `gui/MaaSVWB.Desktop` 为准，同时保留 Project Interface 供通用 Maa 客户端兼容使用。

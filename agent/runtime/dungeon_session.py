@@ -9,8 +9,8 @@ MAX_BATTLE_COUNT = 99
 MAX_CONSECUTIVE_FAILURES = 3
 
 
-class SettlementAction(str, Enum):
-    """下一步结算动作；STOP 用于失败或无法确认结果的安全停止。"""
+class DungeonSettlementAction(str, Enum):
+    """地城结算后的导航动作。"""
 
     REPLAY = "replay"
     RETURN_TO_DUNGEON = "return_to_dungeon"
@@ -18,11 +18,8 @@ class SettlementAction(str, Enum):
 
 
 @dataclass
-class BattleSession:
-    """记录一次地城试炼会话的目标胜场和连续失败次数。
-
-    battle_count 包含首次挑战。失败不计入完成数；连续失败超过三次时安全停止。
-    """
+class DungeonSession:
+    """记录地城目标胜场和连续失败次数。"""
 
     battle_count: int
     victories: int = 0
@@ -41,7 +38,7 @@ class BattleSession:
         if isinstance(self.victories, bool) or not isinstance(self.victories, int):
             raise ValueError("victories 必须是整数")
         if not 0 <= self.victories <= self.battle_count:
-            raise ValueError("victories 超出本次会话的目标战斗次数")
+            raise ValueError("victories 超出本次地城会话的目标战斗次数")
         if (
             isinstance(self.consecutive_failures, bool)
             or not isinstance(self.consecutive_failures, int)
@@ -53,25 +50,25 @@ class BattleSession:
     def remaining_victories(self) -> int:
         return max(0, self.battle_count - self.victories)
 
-    def record_victory(self) -> SettlementAction:
+    def record_victory(self) -> DungeonSettlementAction:
         if self.victories >= self.battle_count:
             raise RuntimeError("本次地城试炼会话已经结束")
         self.victories += 1
         self.consecutive_failures = 0
         return (
-            SettlementAction.REPLAY
+            DungeonSettlementAction.REPLAY
             if self.victories < self.battle_count
-            else SettlementAction.RETURN_TO_DUNGEON
+            else DungeonSettlementAction.RETURN_TO_DUNGEON
         )
 
-    def record_defeat(self) -> SettlementAction:
+    def record_defeat(self) -> DungeonSettlementAction:
         self.consecutive_failures += 1
         return (
-            SettlementAction.STOP
+            DungeonSettlementAction.STOP
             if self.consecutive_failures > MAX_CONSECUTIVE_FAILURES
-            else SettlementAction.REPLAY
+            else DungeonSettlementAction.REPLAY
         )
 
     @staticmethod
-    def record_unknown() -> SettlementAction:
-        return SettlementAction.STOP
+    def record_unknown() -> DungeonSettlementAction:
+        return DungeonSettlementAction.STOP
