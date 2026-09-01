@@ -24,6 +24,8 @@ class RuntimeBackendTests(unittest.TestCase):
     def test_energy_text_without_separator(self) -> None:
         self.assertEqual(MaaBackend._parse_energy_text("33"), (3, 3))
         self.assertEqual(MaaBackend._parse_energy_text("1010"), (10, 10))
+        self.assertEqual(MaaBackend._parse_energy_text("010"), (0, 10))
+        self.assertIsNone(MaaBackend._parse_energy_text("0/0"))
         self.assertIsNone(MaaBackend._parse_energy_text("energy"))
 
 

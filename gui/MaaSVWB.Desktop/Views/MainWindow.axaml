@@ -66,7 +66,7 @@
                   <TextBlock Classes="caption" TextWrapping="Wrap"
                              Text="选好牌组后，请停在地城试炼关卡列表。快梦策略会保留全部 1 费起手，并交换其余成功识别的卡牌。" />
                   <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="#80601D"
-                             Text="推荐无限制牌组码（快梦）" />
+                             Text="目前支持的无限制牌组码（快梦）" />
                   <TextBox MinHeight="68"
                            IsReadOnly="True"
                            TextWrapping="Wrap"

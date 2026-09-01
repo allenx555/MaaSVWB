@@ -16,6 +16,16 @@
                 SelectedItem="{Binding SelectedRunMode}"
                 HorizontalAlignment="Stretch"
                 MinHeight="40" />
+            <Border
+                IsVisible="{Binding IsBatchModeSelected}"
+                Padding="10"
+                Background="#FFF6E4"
+                CornerRadius="6">
+              <TextBlock
+                  Classes="caption"
+                  Text="{Binding BatchAvailabilityHint}"
+                  TextWrapping="Wrap" />
+            </Border>
           </StackPanel>
           <StackPanel IsVisible="{Binding IsCatalogSolutionSelectorVisible}" Spacing="7" Margin="0,5,0,0">
             <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="7">

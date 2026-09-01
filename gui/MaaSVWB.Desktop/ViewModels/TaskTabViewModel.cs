@@ -79,8 +79,32 @@ public sealed class TaskTabViewModel : ViewModelBase
             if (SetProperty(ref _selectedRunMode, value))
             {
                 OnPropertyChanged(nameof(IsCatalogSolutionSelectorVisible));
+                OnPropertyChanged(nameof(IsBatchModeSelected));
+                OnPropertyChanged(nameof(BatchAvailabilityHint));
                 RunCommand.RaiseCanExecuteChanged();
             }
+        }
+    }
+
+    public bool IsBatchModeSelected =>
+        ShowRunModeSelector && SelectedRunMode?.Id == "all_incomplete";
+
+    public string BatchAvailabilityHint
+    {
+        get
+        {
+            var configured = BatchSolutions().ToArray();
+            if (configured.Length == 0)
+            {
+                return $"当前暂时没有已录入脚本的{Definition.BatchNoun}关卡。";
+            }
+
+            var names = configured.Select(solution =>
+                string.IsNullOrWhiteSpace(solution.GroupName)
+                    ? solution.Name
+                    : $"{solution.GroupName} · {solution.Name}");
+            return $"目前暂时仅有以下关卡可由自动完成模式执行：\n• "
+                + string.Join("\n• ", names);
         }
     }
 

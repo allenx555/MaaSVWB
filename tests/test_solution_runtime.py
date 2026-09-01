@@ -527,6 +527,17 @@ class SolutionRuntimeTests(unittest.TestCase):
         controller.cached_image = frame
         self.assertEqual(backend.read_follower_count("enemy"), 1)
 
+        controller.cached_image = np.zeros_like(frame)
+        self.assertEqual(backend.read_follower_count("enemy"), 0)
+
+    def test_explicit_failed_frame_does_not_trigger_second_capture(self) -> None:
+        backend, _navigator, controller = self.make_backend([])
+        controller.post_screencap.reset_mock()
+
+        self.assertIsNone(backend.recognize("任意识别节点", frame=None))
+
+        controller.post_screencap.assert_not_called()
+
     def test_hand_expansion_uses_highlight_pixels_at_probe_point(self) -> None:
         backend, _navigator, controller = self.make_backend([])
         frame = np.zeros((720, 1280, 3), dtype=np.uint8)

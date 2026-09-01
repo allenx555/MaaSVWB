@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
+from unittest.mock import patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,7 @@ from battle_engine.repository import (  # noqa: E402
     BattleProfileRepository,
     CardCatalogRepository,
 )
-from runtime.backend import MaaBackend  # noqa: E402
+from runtime.backend import MaaBackend, ObservedBoardState  # noqa: E402
 from runtime.battle_runner import BattleRunner  # noqa: E402
 from solution_engine.layout import BoardLayout  # noqa: E402
 
@@ -45,6 +46,30 @@ class _MulliganBackend:
         return True
 
     def wait_changed(self, *_args) -> bool:
+        return True
+
+
+class _AttackBackend:
+    def __init__(self) -> None:
+        self.swipes: list[tuple[int, int, int, int, int]] = []
+        self._states = iter(
+            (
+                ObservedBoardState(3, 0, ()),
+                ObservedBoardState(3, 0, ()),
+                ObservedBoardState(2, 0, ()),
+                ObservedBoardState(2, 0, ()),
+            )
+        )
+        self._last = ObservedBoardState(2, 0, ())
+
+    def observe_board_state(self) -> ObservedBoardState:
+        self._last = next(self._states, self._last)
+        return self._last
+
+    def swipe(
+        self, x1: int, y1: int, x2: int, y2: int, duration_ms: int
+    ) -> bool:
+        self.swipes.append((x1, y1, x2, y2, duration_ms))
         return True
 
 
@@ -85,6 +110,35 @@ class BattleRunnerTests(unittest.TestCase):
         runner._apply_mulligan(object())
 
         self.assertEqual(backend.swipes, [(450, 520, 450, 210, 450)])
+
+    def test_attack_recalculates_source_layout_after_follower_dies(self) -> None:
+        catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
+        profile = BattleProfileRepository.for_project(PROJECT_ROOT, catalog).load(
+            "aggro_nightmare"
+        )
+        layout = BoardLayout.load(
+            PROJECT_ROOT / "assets" / "resource" / "layouts" / "default.json"
+        )
+        backend = _AttackBackend()
+        runner = BattleRunner(
+            cast(MaaBackend, backend),
+            layout,
+            catalog,
+            BattlePolicy(profile, catalog),
+        )
+
+        with patch("runtime.battle_runner.time.sleep"):
+            runner._attack_phase()
+
+        enemy_leader = layout.fixed_point("enemy_leader")
+        self.assertEqual(
+            backend.swipes,
+            [
+                (820, 465, *enemy_leader, 350),
+                (730, 465, *enemy_leader, 350),
+                (550, 465, *enemy_leader, 350),
+            ],
+        )
 
 
 if __name__ == "__main__":

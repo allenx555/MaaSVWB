@@ -244,17 +244,21 @@ class BattleRunner:
                 break
             energy, _maximum = energy_pair
             hand = self._observe_hand(energy)
+            if hand is None:
+                LOGGER.warning("[出牌] 截图失败，跳过本次观测并重试")
+                time.sleep(0.2)
+                continue
             if not hand:
                 break
-            ally_count = self.backend.read_follower_count("ally") or 0
+            board = self.backend.observe_board_state()
+            if board is None:
+                LOGGER.warning("[出牌] 场上状态截图失败，跳过本次观测并重试")
+                time.sleep(0.2)
+                continue
             state = BattleState(
                 energy=energy,
-                board_slots=max(0, 5 - ally_count),
-                enemy_has_ward=bool(
-                    self.backend.read_ward_indexes(
-                        self.backend.read_follower_count("enemy") or 0
-                    )
-                ),
+                board_slots=max(0, 5 - board.ally_count),
+                enemy_has_ward=bool(board.enemy_ward_indexes),
                 hand=tuple(item.card for item in hand),
                 played_counts=played_counts,
             )
@@ -275,6 +279,10 @@ class BattleRunner:
                 plan.priority,
             )
             before = self.backend.capture_frame()
+            if before is None:
+                LOGGER.warning("[出牌] 动作前截图失败，本次不执行卡牌操作")
+                time.sleep(0.2)
+                continue
             if not self.backend.swipe(
                 *selected.source, *self.layout.fixed_point("play_area"), 350
             ):
@@ -302,16 +310,18 @@ class BattleRunner:
 
         self._attack_phase()
 
-    def _observe_hand(self, energy: int) -> tuple[ObservedHandCard, ...]:
+    def _observe_hand(self, energy: int) -> tuple[ObservedHandCard, ...] | None:
         frame = self.backend.capture_frame()
         if frame is None:
-            return ()
+            return None
         detail = self.backend.recognize(BATTLE_HAND_NAMES, frame=frame)
         if not detail or not detail.hit:
             if not self.backend.tap(*self.layout.fixed_point("hand_expand")):
                 return ()
             time.sleep(0.4)
             frame = self.backend.capture_frame()
+            if frame is None:
+                return None
             detail = self.backend.recognize(BATTLE_HAND_NAMES, frame=frame)
         if not detail or not detail.hit:
             return ()
@@ -325,23 +335,43 @@ class BattleRunner:
         return observed
 
     def _attack_phase(self) -> None:
-        ally_count = self.backend.read_follower_count("ally") or 0
-        if ally_count <= 0:
+        board = self.backend.observe_board_state()
+        if board is None or board.ally_count <= 0:
             return
+        remaining_index = board.ally_count
+        observation_failures = 0
         # 从右向左尝试，可降低左侧随从死亡后其余序号变化的影响。
-        for index in range(ally_count, 0, -1):
-            enemy_count = self.backend.read_follower_count("enemy") or 0
-            wards = self.backend.read_ward_indexes(enemy_count)
-            if wards:
+        while remaining_index > 0:
+            board = self.backend.observe_board_state()
+            if board is None:
+                observation_failures += 1
+                if observation_failures > self.policy.profile.safety.max_retries_per_action:
+                    LOGGER.warning("[攻击] 连续截图失败，停止当前攻击阶段")
+                    return
+                time.sleep(0.2)
+                continue
+            observation_failures = 0
+            if board.ally_count <= 0:
+                return
+
+            # 若刚才的攻击者被反击消灭，当前随从数量会变小；以实时数量
+            # 修正源序号，避免仍按旧布局计算坐标。
+            index = min(remaining_index, board.ally_count)
+            if board.enemy_ward_indexes:
                 target = self.layout.indexed_point(
-                    "enemy_followers", enemy_count, wards[0]
+                    "enemy_followers",
+                    board.enemy_count,
+                    board.enemy_ward_indexes[0],
                 )
-                target_name = f"敌方守护 {wards[0]}"
+                target_name = f"敌方守护 {board.enemy_ward_indexes[0]}"
             else:
                 target = self.layout.fixed_point("enemy_leader")
                 target_name = "敌方主战者"
-            source = self.layout.indexed_point("ally_followers", ally_count, index)
+            source = self.layout.indexed_point(
+                "ally_followers", board.ally_count, index
+            )
             LOGGER.info("[攻击] 我方随从 %d -> %s", index, target_name)
             if not self.backend.swipe(*source, *target, 350):
                 raise SolutionError("随从攻击操作失败")
+            remaining_index = index - 1
             time.sleep(0.8)

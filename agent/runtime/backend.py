@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import re
 import time
+from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 from maa.context import Context
@@ -13,6 +15,16 @@ from solution_engine.layout import BoardLayout
 
 
 LOGGER = logging.getLogger("maasvwb.solution")
+_FRAME_UNSET = object()
+
+
+@dataclass(frozen=True)
+class ObservedBoardState:
+    """同一帧中观测到的场上随从状态。"""
+
+    ally_count: int
+    enemy_count: int
+    enemy_ward_indexes: tuple[int, ...]
 
 
 class MaaBackend:
@@ -39,7 +51,7 @@ class MaaBackend:
     def key(self, keycode: int) -> bool:
         return self._wait_success(self.controller.post_click_key(keycode))
 
-    def verify(self, pipeline_node: str, frame=None) -> bool:
+    def verify(self, pipeline_node: str, frame=_FRAME_UNSET) -> bool:
         detail = self.recognize(pipeline_node, frame=frame)
         return bool(detail and detail.hit)
 
@@ -91,17 +103,24 @@ class MaaBackend:
             current_text, maximum_text = match.groups()
             candidates.append((int(current_text), int(maximum_text)))
         digits = re.sub(r"\D", "", normalized)
+
+        # 没有可见分隔符时，先尝试不丢字符的紧凑写法。尤其是 010，
+        # 它应解释为 0/10，而不是把中间的 1 当作斜杠得到 0/0。
+        if len(digits) in {2, 4}:
+            middle = len(digits) // 2
+            candidates.append((int(digits[:middle]), int(digits[middle:])))
+        elif len(digits) == 3 and digits.endswith("10"):
+            candidates.append((int(digits[0]), 10))
+
+        # OCR 也可能把斜杠识别为数字 1，例如 3/3 -> 313。
         for separator in (index for index, value in enumerate(digits) if value == "1"):
             if separator == 0 or separator == len(digits) - 1:
                 continue
             candidates.append((int(digits[:separator]), int(digits[separator + 1 :])))
-        if len(digits) in {2, 4}:
-            middle = len(digits) // 2
-            candidates.append((int(digits[:middle]), int(digits[middle:])))
-        valid = [pair for pair in candidates if 0 <= pair[0] <= pair[1] <= 10]
+        valid = [pair for pair in candidates if 0 <= pair[0] <= pair[1] and 1 <= pair[1] <= 10]
         return valid[0] if valid else None
 
-    def read_follower_count(self, side: str) -> int | None:
+    def read_follower_count(self, side: str, *, frame=None) -> int | None:
         """根据随从左下角蓝色攻击力数字，读取当前一侧的随从数量。"""
         regions = {
             "enemy": "enemy_follower_stats",
@@ -109,7 +128,7 @@ class MaaBackend:
         }
         if side not in regions:
             raise ValueError(f"未知场上阵营: {side}")
-        frame = self.capture_frame()
+        frame = self.capture_frame() if frame is None else frame
         if frame is None or frame.ndim < 3:
             return None
 
@@ -138,11 +157,11 @@ class MaaBackend:
             score[max(0, x - 75) : min(len(score), x + 76)] = 0
         peaks.sort()
         if not peaks:
-            LOGGER.warning(
+            LOGGER.info(
                 "未识别到%s场上随从攻击力数字",
                 "敌方" if side == "enemy" else "我方",
             )
-            return None
+            return 0
         LOGGER.info(
             "实时%s随从数量: %d（攻击力数字 x=%s）",
             "敌方" if side == "enemy" else "我方",
@@ -151,11 +170,16 @@ class MaaBackend:
         )
         return len(peaks)
 
-    def read_ward_indexes(self, enemy_count: int) -> tuple[int, ...]:
+    def read_ward_indexes(
+        self,
+        enemy_count: int,
+        *,
+        frame=None,
+    ) -> tuple[int, ...]:
         """按敌方随从序号检测明亮的黄绿色守护盾牌。"""
         if enemy_count <= 0:
             return ()
-        frame = self.capture_frame()
+        frame = self.capture_frame() if frame is None else frame
         if frame is None or frame.ndim < 3:
             return ()
 
@@ -185,6 +209,21 @@ class MaaBackend:
         if wards:
             LOGGER.info("检测到敌方守护随从序号: %s", wards)
         return tuple(wards)
+
+    def observe_board_state(self) -> ObservedBoardState | None:
+        """用一张截图同步读取双方随从数量和敌方守护状态。"""
+        frame = self.capture_frame()
+        if frame is None or frame.ndim < 3:
+            return None
+        ally_count = self.read_follower_count("ally", frame=frame)
+        enemy_count = self.read_follower_count("enemy", frame=frame)
+        if ally_count is None or enemy_count is None:
+            return None
+        return ObservedBoardState(
+            ally_count=ally_count,
+            enemy_count=enemy_count,
+            enemy_ward_indexes=self.read_ward_indexes(enemy_count, frame=frame),
+        )
 
     def hand_is_expanded(
         self, point: tuple[int, int]
@@ -283,14 +322,16 @@ class MaaBackend:
         pipeline_node: str,
         override: dict | None = None,
         *,
-        frame=None,
+        frame=_FRAME_UNSET,
     ):
-        image = self.capture_frame() if frame is None else frame
+        # 显式传入 None 表示本次截图失败，不再偷偷截第二次；省略 frame
+        # 才由 recognize 自己获取截图。
+        image = self.capture_frame() if frame is _FRAME_UNSET else frame
         if image is None:
             return None
         return self.context.run_recognition(
             pipeline_node,
-            image,
+            cast(np.ndarray, image),
             override or {},
         )
 
@@ -305,6 +346,9 @@ class MaaBackend:
             if self.is_stopping():
                 return False
             frame = self.capture_frame()
+            if frame is None:
+                time.sleep(interval_ms / 1000)
+                continue
             detail = self.recognize(pipeline_node, frame=frame)
             if detail and detail.hit:
                 return True
@@ -322,6 +366,9 @@ class MaaBackend:
             if self.is_stopping():
                 return False
             frame = self.capture_frame()
+            if frame is None:
+                time.sleep(interval_ms / 1000)
+                continue
             detail = self.recognize(pipeline_node, frame=frame)
             if not detail or not detail.hit:
                 return True
@@ -397,6 +444,9 @@ class MaaBackend:
             if self.is_stopping():
                 return False
             frame = self.capture_frame()
+            if frame is None:
+                time.sleep(interval_ms / 1000)
+                continue
             detail = self.recognize(pipeline_node, frame=frame)
             if detail and detail.hit:
                 if ready_since is None:

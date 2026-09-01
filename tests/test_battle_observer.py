@@ -47,6 +47,20 @@ class BattleObserverTests(unittest.TestCase):
         self.assertEqual([item.card.playable for item in observed], [True, True, False])
         self.assertEqual([item.source for item in observed], [(340, 665), (530, 665), (750, 665)])
 
+    def test_overlapping_ocr_boxes_are_deduplicated_without_removing_real_duplicates(self) -> None:
+        observed = parse_hand_texts(
+            [
+                HandText("怨灵", 300, 550, 90, 30),
+                HandText("怨灵", 305, 552, 84, 28),
+                HandText("怨灵", 500, 550, 90, 30),
+            ],
+            self.catalog,
+            energy=1,
+        )
+
+        self.assertEqual([item.card.card_id for item in observed], ["90051130", "90051130"])
+        self.assertEqual([item.card.hand_index for item in observed], [1, 2])
+
     def test_maa_ocr_results_are_converted_to_hand_texts(self) -> None:
         texts = recognition_results_to_hand_texts(
             (
