@@ -104,10 +104,10 @@
       <TabItem Header="记牌器">
         <Grid Margin="24">
           <Border Classes="card">
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
-              <TextBlock Classes="sectionTitle" Text="己方牌组剩余" />
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="8">
+              <TextBlock Classes="sectionTitle" Text="记牌器" />
               <TextBlock Grid.Row="1" Classes="caption" TextWrapping="Wrap"
-                         Text="粘贴游戏内复制的牌组长码或多行分享文本，点击解析后在下方展示卡牌列表；留空则按内置策略牌组计算。" />
+                         Text="粘贴游戏内复制的牌组长码或多行分享文本，点击解析后在下方展示卡牌列表。" />
               <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
                 <TextBox Text="{Binding TrackerDeckCode}"
                          Watermark="粘贴牌组长码或游戏分享文本（支持多行）"
@@ -116,8 +116,10 @@
                         Command="{Binding ParseDeckCodeCommand}" Content="解析" />
               </Grid>
               <TextBlock Grid.Row="3" Classes="caption"
+                         Text="{Binding TrackerParseStatus}" />
+              <TextBlock Grid.Row="4" Classes="caption"
                          Text="{Binding OwnDeckTotal, StringFormat='共剩余 {0} 张'}" />
-              <ScrollViewer Grid.Row="4" Margin="0,4,0,0">
+              <ScrollViewer Grid.Row="5" Margin="0,4,0,0">
                 <ItemsControl ItemsSource="{Binding OwnDeckEntries}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

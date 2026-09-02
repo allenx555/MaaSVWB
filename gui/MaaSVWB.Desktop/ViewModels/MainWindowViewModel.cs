@@ -23,6 +23,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private bool _isBusy;
     private int _ownDeckTotal;
     private string _trackerDeckCode;
+    private string _trackerParseStatus = string.Empty;
 
     public MainWindowViewModel()
     {
@@ -92,6 +93,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         get => _ownDeckTotal;
         private set => SetProperty(ref _ownDeckTotal, value);
+    }
+
+    public string TrackerParseStatus
+    {
+        get => _trackerParseStatus;
+        private set => SetProperty(ref _trackerParseStatus, value);
     }
 
     public string TrackerDeckCode
@@ -406,18 +413,21 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var root = _projectRoot;
         if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(root))
         {
-            Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; });
+            Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; TrackerParseStatus = string.Empty; });
             return;
         }
         var canonical = ExtractDeckCode(code);
         if (canonical is null)
         {
-            Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; });
+            Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; TrackerParseStatus = "未检测到有效牌组码"; });
             return;
         }
         var catalogPath = Path.Combine(root, "assets", "battle", "card_catalog.json");
         if (!File.Exists(catalogPath))
+        {
+            Dispatcher.UIThread.Post(() => TrackerParseStatus = "找不到卡牌数据（请检查设置中的项目目录）");
             return;
+        }
         try
         {
             using var stream = File.OpenRead(catalogPath);
@@ -454,17 +464,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 .Select(kv => new TrackerEntry(kv.Key, kv.Value))
                 .ToList();
             var total = entries.Sum(e => e.Count);
+            var kinds = entries.Count;
             Dispatcher.UIThread.Post(() =>
             {
                 OwnDeckEntries.Clear();
                 foreach (var entry in entries)
                     OwnDeckEntries.Add(entry);
                 OwnDeckTotal = total;
+                TrackerParseStatus = $"已解析 {total} 张牌 / {kinds} 种";
             });
         }
         catch
         {
-            // Leave tracker unchanged on error
+            Dispatcher.UIThread.Post(() => TrackerParseStatus = "解析出错，请检查牌组码格式");
         }
     }
 
