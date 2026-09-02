@@ -66,7 +66,10 @@ class ActionBackend(Protocol):
         max_clicks: int,
         interval_ms: int,
         stable_hits: int,
+        ready_grace_ms: int = 0,
     ) -> bool: ...
+
+    def replay_mumu_script(self, script_name: str) -> bool: ...
 
 
 class SolutionExecutor:
@@ -84,9 +87,15 @@ class SolutionExecutor:
         self.layout = layout
         self._hand_expanded = False
 
-    def execute(self, solution: Solution) -> None:
+    def execute(self, solution: Solution, start_step: int = 1) -> None:
+        if not 1 <= start_step <= len(solution.steps):
+            raise SolutionError(
+                f"调试起始步骤必须在 1 到 {len(solution.steps)} 之间"
+            )
         self._hand_expanded = False
-        for index, step in enumerate(solution.steps, start=1):
+        for index, step in enumerate(
+            solution.steps[start_step - 1 :], start=start_step
+        ):
             action = step.get("action")
             if action not in self.SUPPORTED_ACTIONS:
                 raise SolutionError(f"第 {index} 步包含未知动作: {action!r}")
@@ -455,6 +464,9 @@ class SolutionExecutor:
         interval = self._milliseconds(
             step.get("interval_ms", 500), "interval_ms", index
         )
+        ready_grace_ms = self._milliseconds(
+            step.get("ready_grace_ms", 0), "ready_grace_ms", index
+        )
         click_x, click_y = layout.fixed_point("dialog_advance")
         self._require_success(
             self.backend.skip_dialogue(
@@ -464,9 +476,22 @@ class SolutionExecutor:
                 max_clicks,
                 interval,
                 stable_hits,
+                ready_grace_ms,
             ),
             index,
             "skip_dialogue",
+        )
+
+    def _handle_replay_mumu_script(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        script_name = step.get("script_name")
+        if not isinstance(script_name, str) or not script_name:
+            raise SolutionError(f"第 {index} 步 script_name 必须是非空字符串")
+        self._require_success(
+            self.backend.replay_mumu_script(script_name),
+            index,
+            "replay_mumu_script",
         )
 
     @staticmethod

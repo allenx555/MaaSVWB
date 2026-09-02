@@ -127,6 +127,7 @@ assets/
   resource/
     layouts/                   1280×720 统一语义布局
     pipeline/                  MaaFramework Pipeline 与 OCR 节点
+    recordings/                MuMu 操作录制文件
     solutions/                 人工录入的关卡解法
   schemas/                     目录、布局和解法的项目内 Schema
 gui/MaaSVWB.Desktop/           Avalonia 官方桌面前端
@@ -145,10 +146,25 @@ tools/                         环境、检查、调试和发布脚本
 
 ## 添加解法
 
-1. 参考 `docs/examples/puzzle_demo.json`，在 `assets/resource/solutions/` 新建同 ID 的 JSON；
+盘面解密支持两种编写方式，可以按关卡任选其一：
+
+- 语义动作：使用 `play_card`、`attack`、`select_choice`、`evolve`、
+  `activate_amulet` 和 `end_turn` 等动作描述解法。它便于阅读和调整，也能在每步操作前
+  重新识别实时手牌与随从位置。
+- 录制回放：把 MuMu 录制的 `.mmor` 文件放入
+  `assets/resource/recordings/`，建议文件名与解法 ID 一致，再通过
+  `replay_mumu_script` 执行。运行时只读取每个手势的起点、终点和时序，并由
+  MaaFramework 生成点击或直线拖动，不会原样重放录制中的抖动轨迹。
+
+对战教程包含多回合等待和大量固定教学对话，推荐使用录制回放；可先用 `wait_for` 和
+`wait_until_gone` 将回放起点同步到稳定提示消失后的画面。录制依赖固定分辨率和一致的
+起始状态，当前项目以横屏 `1280 × 720` 为基准。
+
+添加流程：
+
+1. 参考 `docs/examples/puzzle_demo.json`，在 `assets/resource/solutions/` 新建与 ID 同名的 JSON；
 2. 在对应的 `assets/catalog/*_catalog.json` 中加入目录项；
-3. 优先使用 `play_card`、`attack`、`select_choice`、`evolve`、`activate_amulet` 和
-   `end_turn` 等语义动作；
+3. 选择语义动作，或添加 `.mmor` 录制并使用 `replay_mumu_script`；
 4. 运行 `python tools/generate_interface.py` 更新通用 Project Interface；
 5. 执行 `tools/test.ps1`。
 

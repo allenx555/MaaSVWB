@@ -19,6 +19,6 @@ SUPPORTED_ACTIONS = frozenset(
         "activate_amulet",
         "end_turn",
         "skip_dialogue",
+        "replay_mumu_script",
     }
 )
-

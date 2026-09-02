@@ -46,6 +46,20 @@
             "option": [
                 "puzzle_solution"
             ]
+        },
+        {
+            "name": "run_tutorial",
+            "label": "运行对战教程",
+            "entry": "执行解法",
+            "controller": [
+                "安卓模拟器"
+            ],
+            "resource": [
+                "默认资源"
+            ],
+            "option": [
+                "tutorial_solution"
+            ]
         }
     ],
     "option": {
@@ -105,6 +119,24 @@
                         "执行解法": {
                             "custom_action_param": {
                                 "solution": "spec_amulet_bishop_2_02"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "tutorial_solution": {
+            "type": "select",
+            "label": "选择对战教程",
+            "default_case": "tutorial_spec_latest_barbaros",
+            "cases": [
+                {
+                    "name": "tutorial_spec_latest_barbaros",
+                    "label": "巴巴洛丝皇家护卫 · 最新弹",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "tutorial_spec_latest_barbaros"
                             }
                         }
                     }

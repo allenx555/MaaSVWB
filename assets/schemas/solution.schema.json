@@ -73,7 +73,7 @@
                 "required": ["action"],
                 "properties": {
                     "action": {
-                        "enum": ["tap", "swipe", "wait", "key", "verify", "mulligan", "confirm_mulligan", "read_energy", "use_extra_energy", "play_card", "attack", "select_target", "select_choice", "evolve", "activate_amulet", "end_turn", "skip_dialogue"]
+                        "enum": ["tap", "swipe", "wait", "key", "verify", "mulligan", "confirm_mulligan", "read_energy", "use_extra_energy", "play_card", "attack", "select_target", "select_choice", "evolve", "activate_amulet", "end_turn", "skip_dialogue", "replay_mumu_script"]
                     },
                     "label": { "type": "string" },
                     "point": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/point" }] },
@@ -92,6 +92,7 @@
                     "choice_count": { "type": "integer", "minimum": 1 },
                     "evolution_type": { "enum": ["normal", "super"] },
                     "expand_hand": { "type": "boolean" },
+                    "script_name": { "type": "string", "pattern": "^[^/\\\\]+\\.mmor$" },
                     "pipeline_node": { "type": "string", "minLength": 1 },
                     "wait_for": { "type": "string", "minLength": 1 },
                     "wait_until_gone": { "type": "string", "minLength": 1 },
@@ -110,7 +111,8 @@
                     "change_settle_ms": { "type": "integer", "minimum": 0, "maximum": 30000 },
                     "retries": { "type": "integer", "minimum": 1, "maximum": 20 },
                     "max_clicks": { "type": "integer", "minimum": 1, "maximum": 100 },
-                    "stable_hits": { "type": "integer", "minimum": 1, "maximum": 5 }
+                    "stable_hits": { "type": "integer", "minimum": 1, "maximum": 5 },
+                    "ready_grace_ms": { "type": "integer", "minimum": 0, "maximum": 30000 }
                 },
                 "additionalProperties": false
             }

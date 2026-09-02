@@ -115,6 +115,7 @@ class SolutionRuntimeTests(unittest.TestCase):
             "puzzle_001",
             skip_completed=True,
             reset_before_execute=True,
+            start_step=1,
         )
 
     @patch("runtime.runner.time.sleep")
@@ -549,6 +550,82 @@ class SolutionRuntimeTests(unittest.TestCase):
 
         controller.cached_image = np.zeros_like(frame)
         self.assertFalse(backend.hand_is_expanded((420, 665)))
+
+    def test_replays_mumu_script_as_maa_click(self) -> None:
+        backend, _navigator, controller = self.make_backend([])
+        payload = {
+            "actions": [
+                {
+                    "type": "touch",
+                    "timing": 0,
+                    "data": "press_rel:(0.3125,1.625)",
+                    "extra1": "1",
+                },
+                {
+                    "type": "touch",
+                    "timing": 100,
+                    "data": "release",
+                    "extra1": "1",
+                },
+            ],
+            "info": {
+                "resolution_x": 1280,
+                "resolution_y": 720,
+                "total_running_time": 100,
+            },
+        }
+        with (
+            patch(
+                "runtime.backend.Path.read_text",
+                return_value=json.dumps(payload),
+            ),
+            patch.object(backend, "_sleep_interruptible", return_value=True),
+        ):
+            self.assertTrue(backend.replay_mumu_script("test.mmor"))
+
+        controller.post_click.assert_called_once_with(1170, 320)
+        controller.post_swipe.assert_not_called()
+
+    def test_replays_mumu_script_as_maa_swipe(self) -> None:
+        backend, _navigator, controller = self.make_backend([])
+        payload = {
+            "actions": [
+                {
+                    "type": "touch",
+                    "timing": 10,
+                    "data": "press_rel:(0.5,1.0)",
+                    "extra1": "1",
+                },
+                {
+                    "type": "touch",
+                    "timing": 50,
+                    "data": "press_rel:(0.4,0.8)",
+                    "extra1": "1",
+                },
+                {
+                    "type": "touch",
+                    "timing": 100,
+                    "data": "release",
+                    "extra1": "1",
+                },
+            ],
+            "info": {
+                "resolution_x": 1280,
+                "resolution_y": 720,
+                "total_running_time": 160,
+            },
+        }
+        with (
+            patch(
+                "runtime.backend.Path.read_text",
+                return_value=json.dumps(payload),
+            ),
+            patch.object(backend, "_sleep_interruptible", return_value=True),
+        ):
+            self.assertTrue(backend.replay_mumu_script("test.mmor"))
+
+        controller.post_click.assert_not_called()
+        controller.post_swipe.assert_called_once_with(720, 80, 576, 208, 150)
 
     @patch("runtime.backend.time.sleep")
     def test_tap_recognition_clicks_detected_box_center(

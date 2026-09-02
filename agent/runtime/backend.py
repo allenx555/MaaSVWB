@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
 import numpy as np
@@ -25,6 +27,14 @@ class ObservedBoardState:
     ally_count: int
     enemy_count: int
     enemy_ward_indexes: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class RecordedGesture:
+    start_ms: int
+    end_ms: int
+    start: tuple[int, int]
+    end: tuple[int, int]
 
 
 class MaaBackend:
@@ -257,6 +267,141 @@ class MaaBackend:
             pixels,
         )
         return expanded
+
+    def replay_mumu_script(self, script_name: str) -> bool:
+        """把 MuMu 录制聚合成 Maa 点击/直线拖拽后按时间轴回放。"""
+        if Path(script_name).name != script_name or not script_name.endswith(".mmor"):
+            LOGGER.error("MuMu 录制文件名不合法: %r", script_name)
+            return False
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "assets"
+            / "resource"
+            / "recordings"
+            / script_name
+        )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            LOGGER.error("读取 MuMu 录制失败 %s: %s", path, exc)
+            return False
+
+        info = payload.get("info")
+        actions = payload.get("actions")
+        if not isinstance(info, dict) or not isinstance(actions, list):
+            LOGGER.error("MuMu 录制缺少 info/actions: %s", path)
+            return False
+        width = info.get("resolution_x")
+        height = info.get("resolution_y")
+        if (
+            not isinstance(width, int)
+            or not isinstance(height, int)
+            or width <= 0
+            or height <= 0
+        ):
+            LOGGER.error("MuMu 录制分辨率无效: %s", info)
+            return False
+
+        gestures = self._parse_mumu_gestures(actions, width, height)
+        if gestures is None:
+            return False
+        LOGGER.info(
+            "开始回放 MuMu 录制: %s（原始事件=%d，Maa 手势=%d，录制时长=%sms）",
+            path,
+            len(actions),
+            len(gestures),
+            info.get("total_running_time"),
+        )
+        timeline_ms = 0
+        for gesture in gestures:
+            if self.is_stopping():
+                return False
+            delay = max(0, gesture.start_ms - timeline_ms)
+            if delay and not self._sleep_interruptible(delay):
+                return False
+            dx = gesture.end[0] - gesture.start[0]
+            dy = gesture.end[1] - gesture.start[1]
+            if dx * dx + dy * dy <= 15 * 15:
+                job = self.controller.post_click(*gesture.end)
+                timeline_ms = gesture.start_ms
+            else:
+                duration_ms = max(100, gesture.end_ms - gesture.start_ms)
+                job = self.controller.post_swipe(
+                    *gesture.start, *gesture.end, duration_ms
+                )
+                timeline_ms = gesture.end_ms
+            if not self._wait_success(job):
+                return False
+
+        total_ms = info.get("total_running_time", timeline_ms)
+        if isinstance(total_ms, int) and total_ms > timeline_ms:
+            if not self._sleep_interruptible(total_ms - timeline_ms):
+                return False
+        LOGGER.info("MuMu 录制回放完成: %s", path)
+        return True
+
+    @staticmethod
+    def _parse_mumu_gestures(
+        actions: list[object], width: int, height: int
+    ) -> list[RecordedGesture] | None:
+        elapsed_ms = 0
+        active: dict[int, tuple[int, tuple[int, int], tuple[int, int]]] = {}
+        gestures: list[RecordedGesture] = []
+        for action in actions:
+            if not isinstance(action, dict):
+                continue
+            delay = action.get("timing", 0)
+            if not isinstance(delay, int) or delay < 0:
+                LOGGER.error("MuMu 录制包含无效 timing: %r", delay)
+                return None
+            elapsed_ms += delay
+            if action.get("type") != "touch":
+                continue
+            data = action.get("data")
+            if data == "reset":
+                active.clear()
+                continue
+            try:
+                contact = int(action.get("extra1", 0))
+            except (TypeError, ValueError):
+                LOGGER.error("MuMu 录制包含无效触点编号: %r", action.get("extra1"))
+                return None
+            if data == "release":
+                current = active.pop(contact, None)
+                if current is not None:
+                    start_ms, start, end = current
+                    gestures.append(
+                        RecordedGesture(start_ms, elapsed_ms, start, end)
+                    )
+                continue
+            match = re.fullmatch(
+                r"press_rel:\(([-+0-9.eE]+),([-+0-9.eE]+)\)", str(data)
+            )
+            if match is None:
+                LOGGER.error("MuMu 录制包含未知触控数据: %r", data)
+                return None
+            relative_x, relative_y = map(float, match.groups())
+            point = (
+                min(width - 1, max(0, round(relative_y * height))),
+                min(height - 1, max(0, round(height - relative_x * width))),
+            )
+            if contact in active:
+                start_ms, start, _end = active[contact]
+                active[contact] = (start_ms, start, point)
+            else:
+                active[contact] = (elapsed_ms, point, point)
+        gestures.sort(key=lambda item: item.start_ms)
+        return gestures
+
+    def _sleep_interruptible(self, duration_ms: int) -> bool:
+        deadline = time.monotonic() + duration_ms / 1000
+        while True:
+            if self.is_stopping():
+                return False
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return True
+            time.sleep(min(remaining, 0.1))
 
     def tap_recognition(
         self,

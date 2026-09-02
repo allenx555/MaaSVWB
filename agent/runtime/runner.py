@@ -12,7 +12,12 @@ from maa.context import Context
 from pipeline_nodes import (
     PUZZLE_LIST,
     PUZZLE_REWARD,
+    TUTORIAL_CONFIRM,
+    TUTORIAL_CONFIRM_ENABLED,
     TUTORIAL_LEADER_OPERABLE,
+    TUTORIAL_LIST,
+    TUTORIAL_NAME,
+    TUTORIAL_TAB,
 )
 from solution_engine.executor import SolutionExecutor
 from solution_engine.layout import BoardLayout
@@ -21,7 +26,7 @@ from solution_engine.repository import SolutionRepository
 
 from .backend import MaaBackend
 from .events import emit_event
-from .puzzle_navigator import PuzzleNavigator
+from .puzzle_navigator import ListNavigationNodes, PuzzleNavigator
 
 
 LOGGER = logging.getLogger("maasvwb.solution")
@@ -68,6 +73,29 @@ def wait_for_puzzle_list(
                 return False
             time.sleep(interval_ms / 1000)
             continue
+        time.sleep(interval_ms / 1000)
+    return False
+
+
+def wait_for_tutorial_list(
+    backend: MaaBackend,
+    advance_point: tuple[int, int],
+    timeout_ms: int = 60_000,
+    interval_ms: int = 700,
+) -> bool:
+    """推进教程结束对白，直到返回对战教程列表。"""
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        if backend.is_stopping():
+            return False
+        frame = backend.capture_frame()
+        if frame is None:
+            time.sleep(interval_ms / 1000)
+            continue
+        if backend.verify(TUTORIAL_LIST, frame):
+            return True
+        if not backend.tap(*advance_point):
+            return False
         time.sleep(interval_ms / 1000)
     return False
 
@@ -126,20 +154,40 @@ def run_solution(
     *,
     skip_completed: bool = False,
     reset_before_execute: bool = False,
+    start_step: int = 1,
 ) -> bool:
     project_root = resolve_project_root()
     solution = _load_solution(project_root, solution_id)
     layout = _load_layout(project_root)
     backend = MaaBackend(context, layout)
+    list_node = PUZZLE_LIST
+    list_label = "盘面解密"
     navigator = PuzzleNavigator(backend)
+    if solution.category == "tutorial":
+        list_node = TUTORIAL_LIST
+        list_label = "对战教程"
+        navigator = PuzzleNavigator(
+            backend,
+            ListNavigationNodes(
+                name=TUTORIAL_NAME,
+                tab=TUTORIAL_TAB,
+                category=TUTORIAL_NAME,
+                confirm=TUTORIAL_CONFIRM,
+                confirm_enabled=TUTORIAL_CONFIRM_ENABLED,
+            ),
+        )
 
-    if reset_before_execute and not backend.verify(PUZZLE_LIST):
+    if (
+        reset_before_execute
+        and solution.category == "puzzle"
+        and not backend.verify(PUZZLE_LIST)
+    ):
         reset_puzzle_for_debug(backend, layout)
 
     entered_from_list = False
     if solution.navigation is not None:
         display_name = solution.navigation["display_name"]
-        if backend.verify(PUZZLE_LIST):
+        if backend.verify(list_node):
             entered_from_list = True
             categories = solution.navigation.get("categories", [])
             tab_categories = [item for item in categories if item["scope"] == "tab"]
@@ -151,8 +199,8 @@ def run_solution(
             if not navigator.confirm_categories(
                 tab_categories, list_top, list_bottom, search_swipes
             ):
-                raise SolutionError("未能确认盘面解密固定类别")
-            LOGGER.info("[导航 1/3] 已确认盘面解密固定标签")
+                raise SolutionError(f"未能确认{list_label}固定类别")
+            LOGGER.info("[导航 1/3] 已确认%s固定标签", list_label)
 
             LOGGER.info("[导航 2/3] 确认列表类别")
             LOGGER.info("[导航 3/3] 查找题目：%s", display_name)
@@ -162,7 +210,7 @@ def run_solution(
                 list_categories,
                 layout,
                 search_swipes,
-                skip_completed,
+                skip_completed and solution.category == "puzzle",
             )
             if selection == "completed":
                 LOGGER.info("[跳过] 已完成并领取奖励：%s", display_name)
@@ -177,20 +225,25 @@ def run_solution(
                     list_categories,
                     layout,
                     search_swipes,
-                    skip_completed,
+                    skip_completed and solution.category == "puzzle",
                 )
                 if selection == "completed":
                     LOGGER.info("[跳过] 已完成并领取奖励：%s", display_name)
                     return False
                 selected = selection == "selected"
             if not selected:
-                raise SolutionError(f"未能在列表中识别盘面解密: {display_name}")
+                raise SolutionError(f"未能在列表中识别{list_label}: {display_name}")
             time.sleep(solution.navigation.get("entry_wait_ms", 3500) / 1000)
         else:
-            LOGGER.info("当前不在盘面解密列表，按已进入关卡继续")
+            LOGGER.info("当前不在%s列表，按已进入关卡继续", list_label)
 
-        LOGGER.info("[开场] 正在跳过教程提示并等待可操作盘面")
-        if not backend.skip_dialogue(
+        should_sync_opening = (
+            solution.category != "tutorial"
+            and (entered_from_list or start_step == 1)
+        )
+        if should_sync_opening:
+            LOGGER.info("[开场] 正在跳过教程提示并等待可操作盘面")
+        if should_sync_opening and not backend.skip_dialogue(
             TUTORIAL_LEADER_OPERABLE,
             *layout.fixed_point("dialog_advance"),
             60,
@@ -199,19 +252,30 @@ def run_solution(
             ready_grace_ms=3000 if entered_from_list else 0,
         ):
             raise SolutionError("进入关卡后未能识别到可操作盘面")
-        LOGGER.info("[开场] 已进入可操作状态")
+        if should_sync_opening:
+            LOGGER.info("[开场] 已进入可操作状态")
+        elif solution.category != "tutorial":
+            LOGGER.info("[调试] 从第 %d 步继续，跳过开场状态同步", start_step)
+        else:
+            LOGGER.info("[教程] 由解法按固定次数推进教学提示")
 
     LOGGER.info("开始执行解法: %s (%s)", solution.id, solution.name)
     emit_event("solution", f"开始执行：{solution.name}", state="starting", name=solution.id)
     LOGGER.info("[解法] 开始执行：%s", solution.name)
-    SolutionExecutor(backend, LOGGER, layout).execute(solution)
+    SolutionExecutor(backend, LOGGER, layout).execute(solution, start_step=start_step)
     LOGGER.info("解法执行完成: %s", solution.id)
     emit_event("solution", f"解法动作完成：{solution.name}", state="succeeded", name=solution.id)
 
-    if solution.navigation is not None:
+    if solution.navigation is not None and solution.category == "puzzle":
         LOGGER.info("[完成] 解法动作已执行，等待返回盘面解密列表")
         if not wait_for_puzzle_list(
             backend, layout.fixed_point("puzzle_reward_continue")
         ):
             raise SolutionError("解密完成后 60 秒内未返回盘面解密列表")
+    elif solution.navigation is not None and solution.category == "tutorial":
+        LOGGER.info("[完成] 教程动作已执行，推进结束对白并等待返回教程列表")
+        if not wait_for_tutorial_list(
+            backend, layout.fixed_point("dialog_advance")
+        ):
+            raise SolutionError("教程完成后 60 秒内未返回对战教程列表")
     return True

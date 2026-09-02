@@ -1,4 +1,46 @@
 {
+    "识别_对战教程列表": {
+        "recognition": "OCR",
+        "roi": [45, 20, 230, 55],
+        "expected": ["对战教程", "對戰教程"],
+        "threshold": 0.3
+    },
+    "识别_对战教程名称": {
+        "recognition": "OCR",
+        "roi": [45, 150, 500, 450],
+        "expected": ".+",
+        "threshold": 0.3,
+        "order_by": "Vertical"
+    },
+    "识别_对战教程标签": {
+        "recognition": "OCR",
+        "roi": [25, 80, 550, 75],
+        "expected": ".+",
+        "threshold": 0.3,
+        "order_by": "Vertical"
+    },
+    "识别_对战教程决定": {
+        "recognition": "OCR",
+        "roi": [1030, 380, 210, 210],
+        "expected": ["决定", "決定"],
+        "threshold": 0.3
+    },
+    "识别_对战教程决定可用": {
+        "recognition": "ColorMatch",
+        "roi": [1060, 415, 150, 150],
+        "method": 4,
+        "lower": [0, 70, 120],
+        "upper": [120, 255, 255],
+        "count": 4000,
+        "connected": false
+    },
+    "识别_学习巴巴洛丝皇家护卫提示": {
+        "recognition": "OCR",
+        "roi": [490, 370, 320, 50],
+        "expected": ".*学习巴巴洛[丝斯]皇家护卫.*",
+        "threshold": 0.25,
+        "only_rec": true
+    },
     "识别_教程对话继续箭头": {
         "recognition": "ColorMatch",
         "roi": [930, 280, 60, 50],

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 
 from pipeline_nodes import (
     PUZZLE_CATEGORY,
@@ -27,11 +28,27 @@ CATEGORY_SUFFIX_WIDTH = 35
 CATEGORY_SUFFIX_VERTICAL_PADDING = 16
 
 
-class PuzzleNavigator:
-    """负责盘面解密列表的滚动、分类选择和题目确认。"""
+@dataclass(frozen=True)
+class ListNavigationNodes:
+    name: str = PUZZLE_NAME
+    tab: str = PUZZLE_TAB
+    category: str = PUZZLE_CATEGORY
+    confirm: str = PUZZLE_CONFIRM
+    confirm_enabled: str = PUZZLE_CONFIRM_ENABLED
+    completed: str = PUZZLE_COMPLETED
+    reward_claimed: str = PUZZLE_REWARD_CLAIMED
 
-    def __init__(self, backend: MaaBackend) -> None:
+
+class PuzzleNavigator:
+    """负责教程类列表的滚动、分类选择和条目确认。"""
+
+    def __init__(
+        self,
+        backend: MaaBackend,
+        nodes: ListNavigationNodes | None = None,
+    ) -> None:
         self.backend = backend
+        self.nodes = nodes or ListNavigationNodes()
 
     def find_in_scroll_list(
         self,
@@ -98,7 +115,7 @@ class PuzzleNavigator:
         skip_completed: bool = False,
     ) -> str | None:
         detail = self.find_in_scroll_list(
-            PUZZLE_NAME, name_pattern, list_top, list_bottom, max_swipes
+            self.nodes.name, name_pattern, list_top, list_bottom, max_swipes
         )
         if detail is None:
             return None
@@ -111,7 +128,7 @@ class PuzzleNavigator:
         if not self.backend.tap(box.x + box.w // 2, box.y + box.h // 2):
             return None
         time.sleep(LIST_CLICK_SETTLE_MS / 1000)
-        if not self.backend.verify(PUZZLE_CONFIRM_ENABLED):
+        if not self.backend.verify(self.nodes.confirm_enabled):
             LOGGER.error("点击题名后，决定按钮没有进入亮蓝可用状态")
             return None
         return "selected" if self.backend.tap(confirm_x, confirm_y) else None
@@ -124,12 +141,12 @@ class PuzzleNavigator:
         row_top = max(190, box.y - 45)
         row_height = max(75, min(100, box.h + 65))
         complete = self.backend.recognize(
-            PUZZLE_COMPLETED,
-            {PUZZLE_COMPLETED: {"roi": [55, row_top, 105, row_height]}},
+            self.nodes.completed,
+            {self.nodes.completed: {"roi": [55, row_top, 105, row_height]}},
         )
         claimed = self.backend.recognize(
-            PUZZLE_REWARD_CLAIMED,
-            {PUZZLE_REWARD_CLAIMED: {"roi": [390, row_top, 130, row_height]}},
+            self.nodes.reward_claimed,
+            {self.nodes.reward_claimed: {"roi": [390, row_top, 130, row_height]}},
         )
         completed = bool(complete and complete.hit and claimed and claimed.hit)
         LOGGER.info(
@@ -151,7 +168,7 @@ class PuzzleNavigator:
     ) -> bool:
         for attempt in range(1, max_clicks + 1):
             detail = self.find_in_scroll_list(
-                PUZZLE_CATEGORY,
+                self.nodes.category,
                 category["pattern"],
                 list_top,
                 list_bottom,
@@ -177,7 +194,7 @@ class PuzzleNavigator:
                 return True
             if expanded is None and puzzle_pattern:
                 puzzle = self.find_in_scroll_list(
-                    PUZZLE_NAME,
+                    self.nodes.name,
                     puzzle_pattern,
                     list_top,
                     list_bottom,
@@ -195,7 +212,7 @@ class PuzzleNavigator:
             time.sleep(LIST_CLICK_SETTLE_MS / 1000)
             if puzzle_pattern:
                 puzzle = self.find_in_scroll_list(
-                    PUZZLE_NAME,
+                    self.nodes.name,
                     puzzle_pattern,
                     list_top,
                     list_bottom,
@@ -203,7 +220,7 @@ class PuzzleNavigator:
                 )
                 if puzzle is not None:
                     return True
-            elif self.backend.wait_recognition(PUZZLE_CONFIRM, 1500, 250):
+            elif self.backend.wait_recognition(self.nodes.confirm, 1500, 250):
                 return True
         LOGGER.error("点击后仍未找到目标题目: %s", category["display_name"])
         return False
@@ -217,9 +234,9 @@ class PuzzleNavigator:
             box.h + CATEGORY_SUFFIX_VERTICAL_PADDING,
         ]
         detail = self.backend.recognize(
-            PUZZLE_CATEGORY,
+            self.nodes.category,
             {
-                PUZZLE_CATEGORY: {
+                self.nodes.category: {
                     "roi": roi,
                     "only_rec": True,
                     "expected": expected,
@@ -237,7 +254,7 @@ class PuzzleNavigator:
         max_swipes: int,
     ) -> bool:
         for category in categories:
-            node = PUZZLE_TAB if category["scope"] == "tab" else PUZZLE_CATEGORY
+            node = self.nodes.tab if category["scope"] == "tab" else self.nodes.category
             if category["scope"] == "list":
                 detail = self.find_in_scroll_list(
                     node, category["pattern"], list_top, list_bottom, max_swipes

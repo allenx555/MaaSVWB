@@ -68,6 +68,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="调试用：当前在关卡内时先点击左侧重置按钮",
     )
+    parser.add_argument(
+        "--start-step",
+        type=int,
+        default=1,
+        help="调试用：从解法的指定步骤开始执行（从 1 开始）",
+    )
     parser.add_argument("--stop-file", type=Path, help="前端用于请求优雅停止的控制文件")
     parser.add_argument(
         "--save-draw",
@@ -214,6 +220,7 @@ def main() -> int:
                     "solution": solution_id,
                     "skip_completed": args.skip_completed,
                     "reset_before_execute": args.reset_before_execute,
+                    "start_step": args.start_step,
                 }
             }
         }

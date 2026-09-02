@@ -79,6 +79,10 @@ class FakeBackend:
             else None
         )
 
+    def replay_mumu_script(self, script_name: str) -> bool:
+        self.calls.append(("replay_mumu_script", script_name))
+        return True
+
     def tap_recognition(
         self, pipeline_node: str, timeout_ms: int, interval_ms: int = 250
     ) -> bool:
@@ -100,6 +104,7 @@ class FakeBackend:
         max_clicks: int,
         interval_ms: int,
         stable_hits: int,
+        ready_grace_ms: int = 0,
     ) -> bool:
         self.calls.append(
             (
@@ -110,6 +115,7 @@ class FakeBackend:
                 max_clicks,
                 interval_ms,
                 stable_hits,
+                ready_grace_ms,
             )
         )
         return True
@@ -386,6 +392,30 @@ class SolutionEngineTests(unittest.TestCase):
                 ("tap", 1025, 665),
                 ("swipe", 860, 665, 640, 430, 350),
             ],
+        )
+
+    def test_tutorial_can_replay_mumu_script(self) -> None:
+        solution = Solution.from_dict(
+            {
+                "id": "tutorial_recording",
+                "name": "tutorial recording",
+                "category": "tutorial",
+                "reference_resolution": [1280, 720],
+                "steps": [
+                    {
+                        "action": "replay_mumu_script",
+                        "script_name": "tutorial_spec_latest_barbaros.mmor",
+                    }
+                ],
+            }
+        )
+        backend = FakeBackend()
+
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+
+        self.assertEqual(
+            backend.calls,
+            [("replay_mumu_script", "tutorial_spec_latest_barbaros.mmor")],
         )
 
     def test_choice_uses_semantic_index_and_reexpands_hand(self) -> None:
@@ -675,6 +705,7 @@ class SolutionEngineTests(unittest.TestCase):
                     30,
                     350,
                     2,
+                    0,
                 )
             ],
         )

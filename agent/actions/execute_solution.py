@@ -27,6 +27,7 @@ class ExecuteSolution(CustomAction):
                 reset_before_execute=bool(
                     params.get("reset_before_execute", False)
                 ),
+                start_step=int(params.get("start_step", 1)),
             )
             print(f"自定义动作结束: {solution_id}", flush=True)
             return True

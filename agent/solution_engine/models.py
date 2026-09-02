@@ -70,8 +70,8 @@ class Solution:
 
         navigation = data.get("navigation")
         if navigation is not None:
-            if category != "puzzle" or not isinstance(navigation, dict):
-                raise SolutionError("navigation 只能用于 puzzle，且必须是对象")
+            if not isinstance(navigation, dict):
+                raise SolutionError("navigation 必须是对象")
             for field in ("display_name", "name_pattern"):
                 if not isinstance(navigation.get(field), str) or not navigation[field]:
                     raise SolutionError(f"navigation.{field} 必须是非空字符串")

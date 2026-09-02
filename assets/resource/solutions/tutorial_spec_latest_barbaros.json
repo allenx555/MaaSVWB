@@ -1,0 +1,38 @@
+{
+    "id": "tutorial_spec_latest_barbaros",
+    "name": "巴巴洛丝皇家护卫 · 最新弹",
+    "category": "tutorial",
+    "reference_resolution": [1280, 720],
+    "navigation": {
+        "display_name": "巴巴洛丝皇家护卫",
+        "name_pattern": ".*巴巴洛[丝斯]皇家护卫.*",
+        "categories": [
+            { "display_name": "指定系列", "pattern": "指定系列", "scope": "tab" }
+        ],
+        "entry_wait_ms": 0,
+        "search_swipes": 8
+    },
+    "steps": [
+        {
+            "action": "wait",
+            "label": "等待学习巴巴洛丝皇家护卫提示出现",
+            "duration_ms": 0,
+            "wait_for": "识别_学习巴巴洛丝皇家护卫提示",
+            "post_timeout_ms": 15000,
+            "post_interval_ms": 100
+        },
+        {
+            "action": "wait",
+            "label": "等待学习巴巴洛丝皇家护卫提示消失",
+            "duration_ms": 0,
+            "wait_until_gone": "识别_学习巴巴洛丝皇家护卫提示",
+            "post_timeout_ms": 15000,
+            "post_interval_ms": 200
+        },
+        {
+            "action": "replay_mumu_script",
+            "label": "回放巴巴洛丝皇家护卫教程录制",
+            "script_name": "tutorial_spec_latest_barbaros.mmor"
+        }
+    ]
+}

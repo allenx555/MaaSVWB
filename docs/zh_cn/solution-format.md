@@ -325,6 +325,40 @@
 
 默认点击点位于“好的”按钮中心，普通对话和目标说明也允许在该位置推进。
 
+### 回放 MuMu 操作录制
+
+将 MuMu 导出的 `.mmor` 文件放入 `assets/resource/recordings/`，建议使用与解法 ID
+相同的文件名。解法通过 `replay_mumu_script` 引用：
+
+```json
+{
+    "action": "replay_mumu_script",
+    "script_name": "tutorial_spec_latest_barbaros.mmor"
+}
+```
+
+回放器会把录制中的连续触控点聚合为一次 MaaFramework 点击或直线拖动，只保留手势
+起点、终点、持续时间和动作间隔，不会重放中间的手部抖动轨迹。录制画面必须使用与
+解法一致的横屏分辨率和起始状态。盘面解密可以在语义动作与录制回放之间任选；包含
+多回合等待和大量固定教学对话的对战教程推荐使用录制回放。
+
+为了稳定同步起点，可以先等待一个固定提示出现并消失，再开始回放：
+
+```json
+{
+    "action": "wait",
+    "duration_ms": 0,
+    "wait_for": "识别_学习巴巴洛丝皇家护卫提示",
+    "post_timeout_ms": 15000
+},
+{
+    "action": "wait",
+    "duration_ms": 0,
+    "wait_until_gone": "识别_学习巴巴洛丝皇家护卫提示",
+    "post_timeout_ms": 15000
+}
+```
+
 实际触控位置统一维护在 `assets/resource/layouts/default.json`。进入真实战斗盘面后
 只需校准这个布局文件一次，不需要逐关填写坐标。
 
