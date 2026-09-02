@@ -6,7 +6,7 @@ from enum import Enum
 
 MIN_BATTLE_COUNT = 1
 MAX_BATTLE_COUNT = 99
-MAX_CONSECUTIVE_FAILURES = 3
+MAX_CONSECUTIVE_FAILURES = 2
 
 
 class DungeonSettlementAction(str, Enum):

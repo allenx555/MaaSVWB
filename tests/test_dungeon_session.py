@@ -41,15 +41,16 @@ class DungeonSessionTests(unittest.TestCase):
         self.assertEqual(session.victories, 0)
         self.assertEqual(session.remaining_victories, 2)
 
-    def test_fourth_consecutive_failure_stops(self) -> None:
+    def test_third_consecutive_failure_stops(self) -> None:
         session = DungeonSession(battle_count=2)
 
-        for expected_failures in range(1, 4):
+        for expected_failures in range(1, 3):
             self.assertEqual(
                 session.record_defeat(), DungeonSettlementAction.REPLAY
             )
             self.assertEqual(session.consecutive_failures, expected_failures)
         self.assertEqual(session.record_defeat(), DungeonSettlementAction.STOP)
+        self.assertEqual(session.consecutive_failures, 3)
 
     def test_victory_resets_consecutive_failures(self) -> None:
         session = DungeonSession(battle_count=2)

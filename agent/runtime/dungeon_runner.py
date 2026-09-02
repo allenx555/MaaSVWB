@@ -71,7 +71,7 @@ class DungeonRunner:
             if action is DungeonSettlementAction.STOP:
                 if outcome is BattleOutcome.UNKNOWN:
                     raise SolutionError("无法确认战斗结算状态，已安全停止")
-                raise SolutionError("连续失败超过三次，已停止地城试炼")
+                raise SolutionError("连续失败超过两次，已停止地城试炼")
             if not self.backend.tap_recognition(DUNGEON_REPLAY, 15_000):
                 raise SolutionError("结算后未能点击再战")
             time.sleep(2.0)

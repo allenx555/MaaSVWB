@@ -40,7 +40,7 @@
       <TabItem Header="地城试炼">
         <Grid Margin="24" ColumnDefinitions="*,*" ColumnSpacing="18">
           <Border Classes="card">
-            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" RowSpacing="12">
               <TextBlock Classes="sectionTitle" Text="地城试炼" />
               <TextBlock Grid.Row="1" Classes="caption" TextWrapping="Wrap"
                          Text="使用当前已在游戏中选定的无限制牌组进行自动对战；不会按牌组名称检查或切换牌组。" />
@@ -55,7 +55,7 @@
                                MinHeight="40" />
                 <TextBlock Classes="caption" Text="{Binding DungeonBattleCountText}" />
                 <TextBlock Classes="caption" TextWrapping="Wrap"
-                           Text="战斗次数包含首次挑战，且只有胜利才计数。失败后仍会再战；连续失败超过 3 次时停止。" />
+                           Text="战斗次数包含首次挑战。失败后仍会再战；连续失败超过 2 次时停止。" />
               </StackPanel>
 
               <Border Grid.Row="3" Margin="0,18,0,0" Padding="12" Background="#FFF6E5" CornerRadius="7">
@@ -72,13 +72,15 @@
                            TextWrapping="Wrap"
                            Text="{Binding DungeonRecommendedDeckCode}"
                            ToolTip.Tip="点击文本框后按 Ctrl+A 全选，再按 Ctrl+C 复制" />
-                  <TextBlock Classes="caption" TextWrapping="Wrap"
-                             Text="点击上方牌组码后按 Ctrl+A、Ctrl+C 复制，再到游戏的“卡牌 → 新牌组 → 使用牌组码”中粘贴。" />
                 </StackPanel>
               </Border>
 
               <Button Grid.Row="4" Classes="primary" Command="{Binding DungeonRunCommand}" HorizontalAlignment="Stretch">
                 <TextBlock HorizontalAlignment="Center" Text="开始地城试炼" />
+              </Button>
+              <Button Grid.Row="5" Classes="secondary" Command="{Binding StopCommand}"
+                      HorizontalAlignment="Stretch" IsVisible="{Binding IsBusy}">
+                <TextBlock HorizontalAlignment="Center" Text="停止运行" />
               </Button>
             </Grid>
           </Border>
@@ -91,7 +93,7 @@
               <Border Height="1" Margin="0,6" Background="#E5E9ED" />
               <TextBlock FontWeight="SemiBold" Text="结算循环" />
               <TextBlock Classes="caption" TextWrapping="Wrap"
-                         Text="胜利会推进完成计数并清零连续失败次数；失败不计数并继续再战。完成目标胜场后点击“返回地城”；连续第 4 次失败或结算状态不明时停止。" />
+                         Text="胜利会推进完成计数并清零连续失败次数；失败不计数并继续再战。完成目标胜场后点击“返回地城”；连续第 3 次失败或结算状态不明时停止。" />
             </StackPanel>
           </Border>
         </Grid>

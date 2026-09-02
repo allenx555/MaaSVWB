@@ -47,6 +47,9 @@
       <Setter Property="Foreground" Value="#76838F" />
     </Style>
 
+    <Style Selector="TabControl.mainTabs /template/ ItemsPresenter#PART_ItemsPresenter">
+      <Setter Property="Margin" Value="24,0,0,2" />
+    </Style>
     <Style Selector="TabControl.mainTabs /template/ TabStripItem">
       <Setter Property="FontSize" Value="15" />
       <Setter Property="Padding" Value="34,15" />
