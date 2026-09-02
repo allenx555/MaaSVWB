@@ -26,6 +26,10 @@ class BattleObserverTests(unittest.TestCase):
     def test_exact_name_resolves_card(self) -> None:
         self.assertEqual(match_card_name("蛇神之怒", self.catalog), ("10153310", 1.0))
 
+    def test_style_aliases_resolve_to_base_cards(self) -> None:
+        self.assertEqual(match_card_name("新的旅途", self.catalog), ("10503210", 1.0))
+        self.assertEqual(match_card_name("服从魔法", self.catalog), ("10552310", 1.0))
+
     def test_ocr_punctuation_and_one_wrong_character_are_tolerated(self) -> None:
         matched = match_card_name("可爱恶魔 莉莉姆", self.catalog)
         self.assertIsNotNone(matched)

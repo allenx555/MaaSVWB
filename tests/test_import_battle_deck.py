@@ -39,6 +39,9 @@ class BattleDeckImportTests(unittest.TestCase):
                 self._source_card("300", "同名卡", "spell", "300100_300100.png"),
             ],
         }
+        staging["cards"][0]["style_aliases"] = [
+            {"name": "测试异画", "resource_id": "100100", "style_id": "1"}
+        ]
         self._write_json(
             self.base / "maa" / "wizard2_card_staging.json", staging
         )
@@ -147,6 +150,7 @@ class BattleDeckImportTests(unittest.TestCase):
         catalog = CardCatalogRepository(catalog_path).load()
         self.assertEqual(set(catalog.cards), {"100"})
         self.assertEqual(catalog.cards["100"].traits, {"storm"})
+        self.assertEqual(catalog.cards["100"].aliases, ("测试异画",))
         profile = BattleProfileRepository(
             output / "battle" / "profiles", catalog
         ).load("fixture_deck")

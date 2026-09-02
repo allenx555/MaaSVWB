@@ -105,6 +105,7 @@ class CardDefinition:
     default_target: Target
     allowed_targets: frozenset[str]
     traits: frozenset[str]
+    aliases: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], label: str) -> "CardDefinition":
@@ -119,6 +120,7 @@ class CardDefinition:
                 "default_target",
                 "allowed_targets",
                 "traits",
+                "aliases",
             },
             label,
         )
@@ -157,6 +159,13 @@ class CardDefinition:
         supported_traits = {"storm", "rush", "ward", "generated"}
         if not traits <= supported_traits:
             raise BattleProfileError(f"{label}.traits 包含不支持的特性")
+
+        aliases = tuple(
+            _require_string(item, f"{label}.aliases[]")
+            for item in _as_list(data.get("aliases", []), f"{label}.aliases")
+        )
+        if len(set(aliases)) != len(aliases) or name in aliases:
+            raise BattleProfileError(f"{label}.aliases 必须不重复且不能包含主名称")
         return cls(
             id=card_id,
             name=name,
@@ -166,6 +175,7 @@ class CardDefinition:
             default_target=Target(default_target_name),
             allowed_targets=allowed_targets,
             traits=traits,
+            aliases=aliases,
         )
 
 
@@ -384,11 +394,12 @@ class EvolutionPolicy:
 class MulliganPolicy:
     enabled: bool = True
     keep: tuple[str, ...] = ()
+    keep_all_if_any_kept: bool = False
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "MulliganPolicy":
         label = "mulligan"
-        _reject_unknown(data, {"enabled", "keep"}, label)
+        _reject_unknown(data, {"enabled", "keep", "keep_all_if_any_kept"}, label)
         keep = tuple(
             _require_id(item, "mulligan.keep[]")
             for item in _as_list(data.get("keep", []), "mulligan.keep")
@@ -398,6 +409,9 @@ class MulliganPolicy:
         return cls(
             enabled=_optional_bool(data, "enabled", True, label),
             keep=keep,
+            keep_all_if_any_kept=_optional_bool(
+                data, "keep_all_if_any_kept", False, label
+            ),
         )
 
 

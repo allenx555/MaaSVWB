@@ -173,6 +173,37 @@ class BattleProfileTests(unittest.TestCase):
 
         self.assertEqual(replacements, ())
 
+    def test_mulligan_keeps_entire_hand_when_any_keep_card_is_present(self) -> None:
+        data = profile_data()
+        data["mulligan"]["keep_all_if_any_kept"] = True
+        profile = self.load_profile(data)
+        policy = BattlePolicy(profile, self.catalog)
+
+        replacements = policy.choose_mulligan_replacements(
+            (
+                ObservedCard("leader_burn", 1, True),
+                ObservedCard("basic_follower", 2, True),
+                ObservedCard("setup_spell", 3, True),
+            )
+        )
+
+        self.assertEqual(replacements, ())
+
+    def test_mulligan_replaces_entire_hand_when_no_keep_card_is_present(self) -> None:
+        data = profile_data()
+        data["mulligan"]["keep_all_if_any_kept"] = True
+        profile = self.load_profile(data)
+        policy = BattlePolicy(profile, self.catalog)
+
+        replacements = policy.choose_mulligan_replacements(
+            (
+                ObservedCard("leader_burn", 1, True),
+                ObservedCard("setup_spell", 2, True),
+            )
+        )
+
+        self.assertEqual(replacements, (1, 2))
+
     def test_unknown_card_is_rejected(self) -> None:
         data = profile_data()
         data["deck"].append({"card_id": "missing_card", "copies": 1})

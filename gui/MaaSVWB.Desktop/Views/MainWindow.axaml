@@ -64,7 +64,7 @@
                   <TextBlock Classes="caption" TextWrapping="Wrap"
                              Text="请将模拟器设为 1280×720 横屏。开始前必须在游戏中提前选定要使用的无限制牌组；当前版本不会检查牌组名称，也不会自动选择或切换牌组。" />
                   <TextBlock Classes="caption" TextWrapping="Wrap"
-                             Text="选好牌组后，请停在地城试炼关卡列表。快梦策略会保留全部 1 费起手，并交换其余成功识别的卡牌。" />
+                             Text="选好牌组后，请停在地城试炼关卡列表。快梦起手有任意 1 费牌时整手保留；没有 1 费牌时交换全部已识别卡牌。" />
                   <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="#80601D"
                              Text="目前支持的无限制牌组码（快梦）" />
                   <TextBox MinHeight="68"
@@ -89,7 +89,7 @@
             <StackPanel Spacing="12">
               <TextBlock Classes="sectionTitle" Text="当前首版规则" />
               <TextBlock Classes="caption" TextWrapping="Wrap"
-                         Text="换牌保留全部 1 费卡；大游戏世界最优先，其他随从优先于法术，挥毫的怪物最后使用；持续出牌以尽量用完费用；敌方有守护时先处理守护，否则攻击主战者。" />
+                         Text="起手有任意 1 费牌时不换牌，否则交换全部；回合开始优先进化场上随从，没有目标时出牌后优先进化疾驰随从；大游戏世界最优先，其他随从优先于法术；敌方有守护时先处理守护，否则攻击主战者。" />
               <Border Height="1" Margin="0,6" Background="#E5E9ED" />
               <TextBlock FontWeight="SemiBold" Text="结算循环" />
               <TextBlock Classes="caption" TextWrapping="Wrap"

@@ -137,16 +137,23 @@ class BattleProfileRepository:
                         f"combos.{combo.id}.steps[{index}].target",
                     )
 
-        for label, card_ids in (
-            ("evolution.card_priority", set(profile.evolution.card_priority)),
-            ("mulligan.keep", set(profile.mulligan.keep)),
-        ):
-            outside = sorted(card_ids - deck_ids)
-            if outside:
-                raise BattleProfileError(
-                    f"{label} 包含不在 deck 中的卡牌: {', '.join(outside)}"
-                )
-            self._require_known_cards(card_ids, label)
+        evolution_ids = set(profile.evolution.card_priority)
+        outside_evolution = sorted(evolution_ids - deck_ids - generated_ids)
+        if outside_evolution:
+            raise BattleProfileError(
+                "evolution.card_priority 包含不在 deck 中且并非衍生物的卡牌: "
+                f"{', '.join(outside_evolution)}"
+            )
+        self._require_known_cards(evolution_ids, "evolution.card_priority")
+
+        mulligan_ids = set(profile.mulligan.keep)
+        outside_mulligan = sorted(mulligan_ids - deck_ids)
+        if outside_mulligan:
+            raise BattleProfileError(
+                "mulligan.keep 包含不在 deck 中的卡牌: "
+                f"{', '.join(outside_mulligan)}"
+            )
+        self._require_known_cards(mulligan_ids, "mulligan.keep")
 
     def _require_known_cards(self, card_ids: set[str], label: str) -> None:
         unknown = sorted(card_ids - set(self.catalog.cards))

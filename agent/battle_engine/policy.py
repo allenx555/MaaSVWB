@@ -69,6 +69,10 @@ class BattlePolicy:
         if not self.profile.mulligan.enabled:
             return ()
         keep = frozenset(self.profile.mulligan.keep)
+        if self.profile.mulligan.keep_all_if_any_kept and any(
+            card.card_id in keep for card in hand
+        ):
+            return ()
         return tuple(card.hand_index for card in hand if card.card_id not in keep)
 
     def _plan_single(

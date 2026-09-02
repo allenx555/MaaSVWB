@@ -8,7 +8,9 @@ from enum import Enum
 from battle_engine.deck_tracker import DeckTracker
 from battle_engine.models import BattleState, CardCatalog
 from battle_engine.observer import (
+    HandText,
     ObservedHandCard,
+    normalize_card_name,
     parse_hand_texts,
     recognition_results_to_hand_texts,
 )
@@ -21,6 +23,8 @@ from pipeline_nodes import (
     BATTLE_MULLIGAN_NAMES,
     BATTLE_PLAYER_TURN,
     BATTLE_VICTORY,
+    EVOLVE_BUTTON,
+    SUPER_EVOLVE_BUTTON,
 )
 from solution_engine.layout import BoardLayout
 from solution_engine.models import SolutionError
@@ -59,6 +63,7 @@ class BattleRunner:
         self.catalog = catalog
         self.policy = policy
         self._deck_tracker = DeckTracker.from_profile(policy.profile)
+        self._hand_expanded = False
 
     def is_start_state(self, frame) -> bool:
         """判断画面是否已经进入基础战斗流程。"""
@@ -239,7 +244,21 @@ class BattleRunner:
         return current == maximum == 10
 
     def _execute_turn(self) -> None:
+        self._hand_expanded = False
+        evolved = False
+        if self.policy.profile.evolution.enabled:
+            evolved = self._try_evolve_existing_follower()
+
+        played_followers = self._play_cards()
+        if self.policy.profile.evolution.enabled and not evolved:
+            self._try_evolve_played_followers(played_followers)
+
+        self._attack_phase()
+        self._emit_tracker_events()
+
+    def _play_cards(self) -> tuple[str, ...]:
         played_counts: dict[str, int] = {}
+        played_followers: list[str] = []
         no_progress = 0
         for _ in range(self.policy.profile.safety.max_actions_per_turn):
             energy_pair = self.backend.read_energy_points()
@@ -295,6 +314,7 @@ class BattleRunner:
                 time.sleep(0.7)
                 if not self.backend.tap(*self.layout.fixed_point("enemy_leader")):
                     raise SolutionError(f"选择敌方主战者失败: {selected.name}")
+                self._hand_expanded = False
             changed = self.backend.wait_changed(
                 before,
                 self.layout.region("hand_and_board"),
@@ -303,8 +323,14 @@ class BattleRunner:
                 350,
             )
             if changed:
+                # 成功打出任意卡牌后游戏都会重新收拢手牌；下一轮观测
+                # 必须再次展开，不能沿用本地缓存状态。
+                self._hand_expanded = False
                 played_counts[step.card_id] = played_counts.get(step.card_id, 0) + 1
                 self._deck_tracker.record_played(step.card_id)
+                definition = self.catalog.cards.get(step.card_id)
+                if definition is not None and definition.type == "follower":
+                    played_followers.append(step.card_id)
                 no_progress = 0
             else:
                 no_progress += 1
@@ -313,15 +339,77 @@ class BattleRunner:
                     break
             time.sleep(0.6)
 
-        self._attack_phase()
-        self._emit_tracker_events()
+        return tuple(played_followers)
+
+    def _try_evolve_existing_follower(self) -> bool:
+        board = self.backend.observe_board_state()
+        if board is None or board.ally_count <= 0:
+            return False
+        candidates = tuple(
+            (index, None) for index in range(1, board.ally_count + 1)
+        )
+        return self._try_evolve_candidates(board.ally_count, candidates)
+
+    def _try_evolve_played_followers(
+        self, played_followers: tuple[str, ...]
+    ) -> bool:
+        if not played_followers:
+            return False
+        board = self.backend.observe_board_state()
+        if board is None or board.ally_count <= 0:
+            return False
+
+        known_count = min(len(played_followers), board.ally_count)
+        known_cards = played_followers[-known_count:]
+        first_index = board.ally_count - known_count + 1
+        candidates = [
+            (first_index + offset, card_id)
+            for offset, card_id in enumerate(known_cards)
+        ]
+        priority = {
+            card_id: index
+            for index, card_id in enumerate(
+                self.policy.profile.evolution.card_priority
+            )
+        }
+        candidates.sort(
+            key=lambda item: (
+                0 if "storm" in self.catalog.cards[item[1]].traits else 1,
+                priority.get(item[1], len(priority)),
+                item[0],
+            )
+        )
+        return self._try_evolve_candidates(board.ally_count, tuple(candidates))
+
+    def _try_evolve_candidates(
+        self,
+        ally_count: int,
+        candidates: tuple[tuple[int, str | None], ...],
+    ) -> bool:
+        evolution_nodes = {
+            "normal": EVOLVE_BUTTON,
+            "super": SUPER_EVOLVE_BUTTON,
+        }
+        for index, card_id in candidates:
+            point = self.layout.indexed_point("ally_followers", ally_count, index)
+            if not self.backend.tap(*point):
+                raise SolutionError("选择进化随从失败")
+            time.sleep(0.35)
+            for evolution_type in self.policy.profile.evolution.type_order:
+                node = evolution_nodes[evolution_type]
+                if self.backend.tap_recognition(node, 900, 150):
+                    name = self.catalog.cards[card_id].name if card_id else f"随从 {index}"
+                    LOGGER.info("[进化] %s（%s）", name, evolution_type)
+                    time.sleep(1.0)
+                    return True
+
+        # 没有任何候选随从出现可用进化按钮，点击盘面空白关闭详情。
+        if candidates:
+            self.backend.tap(*self.layout.fixed_point("play_area"))
+        return False
 
     def _observe_hand(self, energy: int) -> tuple[ObservedHandCard, ...] | None:
-        frame = self.backend.capture_frame()
-        if frame is None:
-            return None
-        detail = self.backend.recognize(BATTLE_HAND_NAMES, frame=frame)
-        if not detail or not detail.hit:
+        for attempt in range(2):
             expanded = self._expand_hand_for_observation()
             if expanded is None:
                 return ()
@@ -330,39 +418,59 @@ class BattleRunner:
             if frame is None:
                 return None
             detail = self.backend.recognize(BATTLE_HAND_NAMES, frame=frame)
-        if not detail or not detail.hit:
-            return ()
-        texts = recognition_results_to_hand_texts(detail.all_results)
-        observed = parse_hand_texts(texts, self.catalog, energy)
-        LOGGER.info(
-            "[手牌] %s",
-            ", ".join(f"{item.name}({item.score:.2f})" for item in observed)
-            or "未识别到卡名",
-        )
-        return observed
+            texts = recognition_results_to_hand_texts(
+                detail.all_results if detail and detail.hit else ()
+            )
+            if self._hand_texts_are_expanded(texts):
+                observed = parse_hand_texts(texts, self.catalog, energy)
+                LOGGER.info(
+                    "[手牌] %s",
+                    ", ".join(
+                        f"{item.name}({item.score:.2f})" for item in observed
+                    )
+                    or "已展开，但未匹配到已登记卡名",
+                )
+                return observed
+
+            LOGGER.warning(
+                "[手牌] 第 %d 次识别仍是折叠牌扇，重新点击展开",
+                attempt + 1,
+            )
+            self._hand_expanded = False
+
+        LOGGER.warning("[手牌] 连续两次未确认展开，本次按观测失败重试")
+        return None
+
+    @staticmethod
+    def _hand_texts_are_expanded(texts: tuple[HandText, ...]) -> bool:
+        """用卡名文本框位置区分展开手牌与右侧折叠牌扇。"""
+        for text in texts:
+            normalized = normalize_card_name(text.text)
+            if (
+                len(normalized) >= 2
+                and not normalized.isdigit()
+                and 560 <= text.y <= 610
+                and text.height >= 14
+            ):
+                return True
+        return False
 
     def _expand_hand_for_observation(self) -> bool | None:
+        if self._hand_expanded:
+            return True
         hand_count = self.backend.read_hand_count()
         if hand_count == 0:
             LOGGER.info("[手牌] 当前没有手牌，无需展开")
             return None
-        if hand_count is not None:
-            try:
-                # 点击最右侧手牌：它在收拢牌扇中遮挡最少，也能确保少量
-                # 起手时不会误点到固定的右侧空白区域。
-                point = self.layout.indexed_point("hand", hand_count, hand_count)
-            except SolutionError:
-                LOGGER.warning(
-                    "[手牌] 布局不支持实时手牌数量 %d，回退固定展开位置",
-                    hand_count,
-                )
-            else:
-                LOGGER.info("[手牌] 点击最右侧第 %d 张牌展开手牌", hand_count)
-                if not self.backend.tap(*point):
-                    raise SolutionError("点击手牌展开失败")
-                return True
-        if not self.backend.tap(*self.layout.fixed_point("hand_expand")):
+        point = self.layout.fixed_point("hand_expand")
+        LOGGER.info(
+            "[手牌] 点击实机校准位置展开手牌（数量=%s，坐标=%s）",
+            hand_count if hand_count is not None else "未知",
+            point,
+        )
+        if not self.backend.tap(*point):
             raise SolutionError("点击手牌展开失败")
+        self._hand_expanded = True
         return True
 
     def _attack_phase(self) -> None:

@@ -22,7 +22,7 @@ class AggroNightmareProfileTests(unittest.TestCase):
             PROJECT_ROOT, cls.catalog
         ).load("aggro_nightmare")
 
-    def test_mulligan_keeps_every_one_cost_card_in_deck(self) -> None:
+    def test_mulligan_keeps_entire_hand_when_it_contains_a_one_cost_card(self) -> None:
         expected = {
             entry.card_id
             for entry in self.profile.deck
@@ -31,6 +31,7 @@ class AggroNightmareProfileTests(unittest.TestCase):
 
         self.assertTrue(self.profile.mulligan.enabled)
         self.assertEqual(set(self.profile.mulligan.keep), expected)
+        self.assertTrue(self.profile.mulligan.keep_all_if_any_kept)
 
     def test_world_is_first_and_brush_monster_is_last(self) -> None:
         priorities = {
@@ -70,6 +71,16 @@ class AggroNightmareProfileTests(unittest.TestCase):
                 max(priorities_by_cost[lower]),
                 min(priorities_by_cost[higher]),
             )
+
+    def test_evolution_is_enabled_and_prioritizes_storm_followers(self) -> None:
+        self.assertTrue(self.profile.evolution.enabled)
+        self.assertEqual(self.profile.evolution.type_order, ("normal",))
+        self.assertEqual(
+            self.profile.evolution.card_priority,
+            ("90051130", "10051130", "10253120"),
+        )
+        for card_id in self.profile.evolution.card_priority:
+            self.assertIn("storm", self.catalog.cards[card_id].traits)
 
 
 if __name__ == "__main__":

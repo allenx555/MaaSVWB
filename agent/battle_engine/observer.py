@@ -27,15 +27,20 @@ def match_card_name(
 
     candidates: list[tuple[float, str]] = []
     for card_id, definition in catalog.cards.items():
-        expected = normalize_card_name(definition.name)
-        if normalized == expected:
-            score = 1.0
-        elif normalized in expected or expected in normalized:
-            score = min(len(normalized), len(expected)) / max(
-                len(normalized), len(expected)
-            )
-        else:
-            score = SequenceMatcher(None, normalized, expected).ratio()
+        score = 0.0
+        for candidate_name in (definition.name, *definition.aliases):
+            expected = normalize_card_name(candidate_name)
+            if normalized == expected:
+                candidate_score = 1.0
+            elif normalized in expected or expected in normalized:
+                candidate_score = min(len(normalized), len(expected)) / max(
+                    len(normalized), len(expected)
+                )
+            else:
+                candidate_score = SequenceMatcher(
+                    None, normalized, expected
+                ).ratio()
+            score = max(score, candidate_score)
         candidates.append((score, card_id))
 
     score, card_id = max(candidates, default=(0.0, ""))

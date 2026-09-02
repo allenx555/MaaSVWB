@@ -52,7 +52,8 @@ Battle Profile 是地城试炼自动对战使用的用户策略配置。它只�
   },
   "mulligan": {
     "enabled": true,
-    "keep": ["example_follower"]
+    "keep": ["example_follower"],
+    "keep_all_if_any_kept": false
   },
   "safety": {
     "max_actions_per_turn": 30,
@@ -83,6 +84,8 @@ Battle Profile 是地城试炼自动对战使用的用户策略配置。它只�
 
 - `enabled: false`：不选择任何卡牌，直接确认起手；
 - `enabled: true`：保留 `keep` 中的卡牌，交换其余成功识别的起手牌；
+- `keep_all_if_any_kept: true`：只要起手中出现任意一张 `keep` 卡牌，就保留
+  整手；若完全没有出现，则交换所有成功识别的起手牌；
 - OCR 未能识别的起手牌会安全保留，不会盲目交换。
 
 换牌识别和拖动属于通用基础战斗组件，地城试炼等玩法只负责提供 Battle Profile。
@@ -108,6 +111,16 @@ Battle Profile 是地城试炼自动对战使用的用户策略配置。它只�
 
 组合和单卡共用优先级范围；优先级相同时，组合优先。
 
+## 进化策略
+
+- `enabled: true` 开启自动进化；每个己方回合最多成功进化一次。
+- 回合开始时先按当前场上顺序尝试进化已有随从。
+- 若场上没有可进化随从，则在出牌后尝试进化本回合新打出的随从。
+- 新随从优先按卡牌注册表的 `storm`（疾驰）特性选择，再按
+  `card_priority` 的顺序选择。
+- `type_order` 控制尝试 `normal` 或 `super` 进化的顺序；只填写
+  `normal` 时不会消耗超进化。
+
 ## 安全限制
 
 配置不允许包含坐标、Pipeline 节点、Shell 命令、Python 表达式或任意可执行内容。
@@ -132,6 +145,10 @@ Battle Profile 是地城试炼自动对战使用的用户策略配置。它只�
 
 如果多个版本共用同一中文名称，工具会列出候选 ID 并停止，配置中应改用稳定卡牌
 ID，避免误选旧版本或特殊对象。
+
+同一基础卡牌的异画可能显示不同名称。导入器会把 SVWBData 的 `style_aliases`
+转换为运行时卡牌注册表中的 `aliases`，OCR 命中本名或任一别名时都会映射到同一个
+基础卡牌 ID，并沿用相同的费用、类型、目标和策略规则。
 
 每张牌必须人工填写 `default_target` 和 `allowed_targets`。解包得到的技能文本只作为
 校对依据，不会自动决定目标；这可以避免“对敌方主战者造成伤害，同时对己方主战者

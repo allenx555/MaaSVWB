@@ -142,7 +142,8 @@
                     "type": "array",
                     "uniqueItems": true,
                     "items": { "$ref": "#/$defs/id" }
-                }
+                },
+                "keep_all_if_any_kept": { "type": "boolean" }
             },
             "additionalProperties": false
         },

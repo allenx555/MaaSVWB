@@ -279,6 +279,21 @@ def _catalog_traits(source: Mapping[str, Any]) -> list[str]:
     return sorted(result)
 
 
+def _catalog_aliases(source: Mapping[str, Any]) -> list[str]:
+    canonical = source.get("name")
+    result: set[str] = set()
+    aliases = source.get("style_aliases", [])
+    if not isinstance(aliases, list):
+        return []
+    for raw in aliases:
+        if not isinstance(raw, dict):
+            continue
+        name = raw.get("name")
+        if isinstance(name, str) and name and name != canonical:
+            result.add(name)
+    return sorted(result)
+
+
 def _build_profile(
     request: Mapping[str, Any],
     resolved: list[tuple[dict[str, Any], dict[str, Any]]],
@@ -408,6 +423,7 @@ def generate_import(
                 {
                     "id": card_id,
                     "name": source["name"],
+                    "aliases": _catalog_aliases(source),
                     "type": source["type"],
                     "base_cost": source["base_cost"],
                     "templates": template_paths,
