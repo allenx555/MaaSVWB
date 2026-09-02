@@ -106,6 +106,7 @@ class CardDefinition:
     allowed_targets: frozenset[str]
     traits: frozenset[str]
     aliases: tuple[str, ...] = ()
+    deck_code_id: str | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], label: str) -> "CardDefinition":
@@ -121,6 +122,7 @@ class CardDefinition:
                 "allowed_targets",
                 "traits",
                 "aliases",
+                "deck_code_id",
             },
             label,
         )
@@ -159,13 +161,15 @@ class CardDefinition:
         supported_traits = {"storm", "rush", "ward", "generated"}
         if not traits <= supported_traits:
             raise BattleProfileError(f"{label}.traits 包含不支持的特性")
-
         aliases = tuple(
             _require_string(item, f"{label}.aliases[]")
             for item in _as_list(data.get("aliases", []), f"{label}.aliases")
         )
         if len(set(aliases)) != len(aliases) or name in aliases:
             raise BattleProfileError(f"{label}.aliases 必须不重复且不能包含主名称")
+        deck_code_id = data.get("deck_code_id")
+        if deck_code_id is not None and not isinstance(deck_code_id, str):
+            raise BattleProfileError(f"{label}.deck_code_id 必须是字符串")
         return cls(
             id=card_id,
             name=name,
@@ -176,6 +180,7 @@ class CardDefinition:
             allowed_targets=allowed_targets,
             traits=traits,
             aliases=aliases,
+            deck_code_id=deck_code_id,
         )
 
 

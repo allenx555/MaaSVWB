@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .models import BattleProfile, ObservedCard
+from .models import BattleProfile, CardCatalog, ObservedCard
 
 
 @dataclass
@@ -20,6 +20,24 @@ class DeckTracker:
     def from_profile(cls, profile: BattleProfile) -> DeckTracker:
         initial = {entry.card_id: entry.copies for entry in profile.deck}
         return cls(initial_counts=initial)
+
+    @classmethod
+    def from_deck_code(cls, code: str, catalog: CardCatalog) -> DeckTracker:
+        code_to_catalog = {
+            defn.deck_code_id: cid
+            for cid, defn in catalog.cards.items()
+            if defn.deck_code_id
+        }
+        parts = code.strip().split(".")
+        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+            parts = parts[2:]
+        counts: dict[str, int] = {}
+        for short_id in parts:
+            if not short_id:
+                continue
+            catalog_id = code_to_catalog.get(short_id, short_id)
+            counts[catalog_id] = counts.get(catalog_id, 0) + 1
+        return cls(initial_counts=counts)
 
     def update_hand(self, hand: tuple[ObservedCard, ...]) -> None:
         """Snapshot the current hand (called each time the hand is observed)."""
@@ -45,3 +63,4 @@ class DeckTracker:
     @property
     def total_remaining(self) -> int:
         return sum(self.remaining.values())
+

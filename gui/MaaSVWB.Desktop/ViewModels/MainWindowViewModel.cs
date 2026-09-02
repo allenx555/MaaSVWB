@@ -1,4 +1,7 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using Avalonia.Threading;
 using MaaSVWB.Desktop.Models;
 using MaaSVWB.Desktop.Services;
@@ -18,6 +21,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string _statusText = "准备就绪";
     private bool _isBusy;
     private int _ownDeckTotal;
+    private string _trackerDeckCode;
 
     public MainWindowViewModel()
     {
@@ -28,6 +32,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _deviceSerial = settings.DeviceSerial;
         _saveDraw = settings.SaveDraw;
         _dungeonBattleCount = Math.Clamp(settings.DungeonBattleCount, 1, 99);
+        _trackerDeckCode = settings.TrackerDeckCode;
 
         RefreshDevicesCommand = new AsyncCommand(RefreshDevicesAsync, () => !IsBusy);
         TestConnectionCommand = new AsyncCommand(TestConnectionAsync, () => !IsBusy);
@@ -69,6 +74,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         AppendLog($"MaaSVWB 前端已启动，项目目录：{ProjectRoot}");
         _automation.TrackerUpdated += OnTrackerUpdated;
+        RebuildInitialTracker();
         _ = RefreshDevicesAsync();
     }
 
@@ -84,6 +90,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         get => _ownDeckTotal;
         private set => SetProperty(ref _ownDeckTotal, value);
+    }
+
+    public string TrackerDeckCode
+    {
+        get => _trackerDeckCode;
+        set
+        {
+            if (SetProperty(ref _trackerDeckCode, value ?? string.Empty))
+                RebuildInitialTracker();
+        }
     }
 
     public string ProjectRoot
@@ -287,6 +303,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         OwnDeckEntries.Clear();
         OwnDeckTotal = 0;
+        RebuildInitialTracker();
         IsBusy = true;
         StatusText = execute ? $"正在执行：{displayName}" : "正在测试连接";
         AppendLog(string.Empty);
@@ -304,7 +321,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 skipCompleted,
                 SaveDraw,
                 AppendLog,
-                battleCount);
+                battleCount,
+                deckCode: string.IsNullOrWhiteSpace(TrackerDeckCode) ? null : TrackerDeckCode);
             if (_automation.WasStopped || exitCode == 130)
             {
                 StatusText = "任务已停止";
@@ -356,6 +374,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             DeviceSerial = DeviceSerial,
             SaveDraw = SaveDraw,
             DungeonBattleCount = DungeonBattleCount,
+            TrackerDeckCode = TrackerDeckCode,
         });
         StatusText = "设置已保存";
     }
@@ -366,6 +385,65 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             LogText += string.IsNullOrEmpty(line) ? Environment.NewLine : line + Environment.NewLine;
         });
+    }
+
+    private void RebuildInitialTracker()
+    {
+        var code = _trackerDeckCode;
+        var root = _projectRoot;
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(root))
+            return;
+        var catalogPath = Path.Combine(root, "assets", "battle", "card_catalog.json");
+        if (!File.Exists(catalogPath))
+            return;
+        try
+        {
+            using var stream = File.OpenRead(catalogPath);
+            using var doc = JsonDocument.Parse(stream);
+            var codeToName = new Dictionary<string, string>();
+            if (doc.RootElement.TryGetProperty("cards", out var cardsEl))
+            {
+                foreach (var card in cardsEl.EnumerateArray())
+                {
+                    if (card.TryGetProperty("deck_code_id", out var cid) &&
+                        card.TryGetProperty("name", out var nm))
+                    {
+                        var shortId = cid.GetString();
+                        var name = nm.GetString();
+                        if (shortId != null && name != null)
+                            codeToName[shortId] = name;
+                    }
+                }
+            }
+            var parts = code.Trim().Split('.');
+            var start = parts.Length >= 2
+                && int.TryParse(parts[0], out _)
+                && int.TryParse(parts[1], out _) ? 2 : 0;
+            var counts = new Dictionary<string, int>();
+            for (var i = start; i < parts.Length; i++)
+            {
+                var shortId = parts[i];
+                if (string.IsNullOrEmpty(shortId)) continue;
+                var display = codeToName.TryGetValue(shortId, out var n) ? n : shortId;
+                counts[display] = counts.TryGetValue(display, out var c) ? c + 1 : 1;
+            }
+            var entries = counts
+                .OrderBy(kv => kv.Key)
+                .Select(kv => new TrackerEntry(kv.Key, kv.Value))
+                .ToList();
+            var total = entries.Sum(e => e.Count);
+            Dispatcher.UIThread.Post(() =>
+            {
+                OwnDeckEntries.Clear();
+                foreach (var entry in entries)
+                    OwnDeckEntries.Add(entry);
+                OwnDeckTotal = total;
+            });
+        }
+        catch
+        {
+            // Leave tracker unchanged on error
+        }
     }
 
     private void OnTrackerUpdated(object? sender, TrackerSnapshot snapshot)

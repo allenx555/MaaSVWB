@@ -18,11 +18,12 @@ class ExecuteDungeon(CustomAction):
             params = json.loads(argv.custom_action_param or "{}")
             profile_id = str(params.get("profile", "aggro_nightmare"))
             battle_count = int(params.get("battle_count", 1))
+            deck_code = params.get("deck_code") or None
             print(
                 f"自定义动作开始: dungeon / {profile_id} / {battle_count}",
                 flush=True,
             )
-            run_dungeon(context, profile_id, battle_count)
+            run_dungeon(context, profile_id, battle_count, deck_code=deck_code)
             print("自定义动作结束: dungeon", flush=True)
             return True
         except Exception:

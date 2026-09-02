@@ -13,4 +13,6 @@ public sealed class FrontendSettings
     public bool SaveDraw { get; set; }
 
     public int DungeonBattleCount { get; set; } = 1;
+
+    public string TrackerDeckCode { get; set; } = string.Empty;
 }

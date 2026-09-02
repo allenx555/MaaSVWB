@@ -57,12 +57,16 @@ class BattleRunner:
         layout: BoardLayout,
         catalog: CardCatalog,
         policy: BattlePolicy,
+        deck_code: str | None = None,
     ) -> None:
         self.backend = backend
         self.layout = layout
         self.catalog = catalog
         self.policy = policy
-        self._deck_tracker = DeckTracker.from_profile(policy.profile)
+        if deck_code:
+            self._deck_tracker = DeckTracker.from_deck_code(deck_code, catalog)
+        else:
+            self._deck_tracker = DeckTracker.from_profile(policy.profile)
         self._hand_expanded = False
 
     def is_start_state(self, frame) -> bool:

@@ -49,6 +49,7 @@ public sealed class AutomationService : IDisposable
         bool saveDraw,
         Action<string> onOutput,
         int battleCount = 1,
+        string? deckCode = null,
         CancellationToken cancellationToken = default)
     {
         lock (_gate)
@@ -123,6 +124,11 @@ public sealed class AutomationService : IDisposable
         if (saveDraw)
         {
             startInfo.ArgumentList.Add("--save-draw");
+        }
+        if (!string.IsNullOrWhiteSpace(deckCode))
+        {
+            startInfo.ArgumentList.Add("--deck-code");
+            startInfo.ArgumentList.Add(deckCode);
         }
         if (execute)
         {

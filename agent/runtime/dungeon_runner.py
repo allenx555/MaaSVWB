@@ -110,7 +110,12 @@ class DungeonRunner:
         raise SolutionError("120 秒内未能进入地城战斗")
 
 
-def run_dungeon(context: Context, profile_id: str, battle_count: int) -> None:
+def run_dungeon(
+    context: Context,
+    profile_id: str,
+    battle_count: int,
+    deck_code: str | None = None,
+) -> None:
     project_root = resolve_project_root()
     catalog = CardCatalogRepository.for_project(project_root).load()
     profile = BattleProfileRepository.for_project(project_root, catalog).load(profile_id)
@@ -121,6 +126,7 @@ def run_dungeon(context: Context, profile_id: str, battle_count: int) -> None:
         layout,
         catalog,
         BattlePolicy(profile, catalog),
+        deck_code=deck_code,
     )
     session = DungeonSession(battle_count=battle_count)
     emit_event(

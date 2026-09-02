@@ -101,16 +101,26 @@
       <TabItem Header="记牌器">
         <Grid Margin="24">
           <Border Classes="card">
-            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
               <TextBlock Classes="sectionTitle" Text="己方牌组剩余" />
-              <TextBlock Grid.Row="1" Classes="caption"
+              <TextBlock Grid.Row="1" Classes="caption" TextWrapping="Wrap"
+                         Text="粘贴游戏内复制的牌组长码，下次对战开始时记牌器将以此初始化；留空则按内置策略牌组计算。" />
+              <TextBox Grid.Row="2" Text="{Binding TrackerDeckCode}"
+                       Watermark="粘贴牌组长码（如 2.5.e3ls.e3ls…）"
+                       TextWrapping="Wrap" MinHeight="52" />
+              <TextBlock Grid.Row="3" Classes="caption"
                          Text="{Binding OwnDeckTotal, StringFormat='共剩余 {0} 张'}" />
-              <ScrollViewer Grid.Row="2" Margin="0,8,0,0">
+              <ScrollViewer Grid.Row="4" Margin="0,4,0,0">
                 <ItemsControl ItemsSource="{Binding OwnDeckEntries}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <UniformGrid Columns="2" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <Grid ColumnDefinitions="*,Auto" Margin="0,4">
-                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,4,12,4">
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="1" Text="{Binding Count}" FontWeight="SemiBold"
                                    Foreground="#2F6F73" VerticalAlignment="Center" />
                       </Grid>

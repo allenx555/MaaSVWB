@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--solution", help="解法 ID；盘面解密默认使用 puzzle_001")
     parser.add_argument("--profile", default="aggro_nightmare", help="地城对战策略 ID")
     parser.add_argument("--battle-count", type=int, default=1, help="地城目标胜利场数")
+    parser.add_argument("--deck-code", type=str, default=None, help="记牌器初始牌组长码")
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -208,6 +209,7 @@ def main() -> int:
                 "custom_action_param": {
                     "profile": args.profile,
                     "battle_count": args.battle_count,
+                    "deck_code": args.deck_code,
                 }
             }
         }
