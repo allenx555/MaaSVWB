@@ -7,7 +7,7 @@ from .models import BattleProfile, CardCatalog, ObservedCard
 
 # Matches the canonical deck code: two version numbers followed by card short-IDs,
 # e.g. "2.5.e3ls.e3ls.fGAU". Used to extract the code from multi-line share text.
-_DECK_CODE_RE = re.compile(r"\d+\.\d+(?:\.[A-Za-z0-9]+)+")
+_DECK_CODE_RE = re.compile(r"\d+\.\d+(?:\.[A-Za-z0-9-]+)+")
 
 
 @dataclass

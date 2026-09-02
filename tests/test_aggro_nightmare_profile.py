@@ -46,11 +46,13 @@ class AggroNightmareProfileTests(unittest.TestCase):
         follower_priorities = [
             self.profile.cards[card_id].play_priority
             for card_id, definition in self.catalog.cards.items()
+            if card_id in self.profile.cards
             if definition.type == "follower" and card_id != "10501110"
         ]
         spell_priorities = [
             self.profile.cards[card_id].play_priority
             for card_id, definition in self.catalog.cards.items()
+            if card_id in self.profile.cards
             if definition.type == "spell"
         ]
 
@@ -59,6 +61,8 @@ class AggroNightmareProfileTests(unittest.TestCase):
     def test_higher_cost_followers_are_preferred_within_same_category(self) -> None:
         priorities_by_cost: dict[int, set[int]] = {}
         for card_id, definition in self.catalog.cards.items():
+            if card_id not in self.profile.cards:
+                continue
             if definition.type != "follower" or card_id == "10501110":
                 continue
             priorities_by_cost.setdefault(definition.base_cost, set()).add(

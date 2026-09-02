@@ -41,6 +41,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         StopCommand = new RelayCommand(Stop, () => IsBusy);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         ClearLogCommand = new RelayCommand(() => LogText = string.Empty);
+        ParseDeckCodeCommand = new RelayCommand(RebuildInitialTracker);
 
         Puzzle = new TaskTabViewModel(
             this,
@@ -193,6 +194,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public RelayCommand SaveSettingsCommand { get; }
 
     public RelayCommand ClearLogCommand { get; }
+
+    public RelayCommand ParseDeckCodeCommand { get; }
 
     public async Task<bool> RunTaskAsync(
         string category,
@@ -389,7 +392,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     private static readonly Regex DeckCodePattern =
-        new(@"\d+\.\d+(?:\.[A-Za-z0-9]+)+", RegexOptions.Compiled);
+        new(@"\d+\.\d+(?:\.[A-Za-z0-9-]+)+", RegexOptions.Compiled);
 
     private static string? ExtractDeckCode(string raw)
     {

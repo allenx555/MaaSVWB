@@ -107,10 +107,14 @@
             <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
               <TextBlock Classes="sectionTitle" Text="己方牌组剩余" />
               <TextBlock Grid.Row="1" Classes="caption" TextWrapping="Wrap"
-                         Text="粘贴游戏内复制的牌组长码，下次对战开始时记牌器将以此初始化；留空则按内置策略牌组计算。" />
-              <TextBox Grid.Row="2" Text="{Binding TrackerDeckCode}"
-                       Watermark="粘贴牌组长码（如 2.5.e3ls.e3ls…）"
-                       TextWrapping="Wrap" MinHeight="52" />
+                         Text="粘贴游戏内复制的牌组长码或多行分享文本，点击解析后在下方展示卡牌列表；留空则按内置策略牌组计算。" />
+              <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                <TextBox Text="{Binding TrackerDeckCode}"
+                         Watermark="粘贴牌组长码或游戏分享文本（支持多行）"
+                         TextWrapping="Wrap" MinHeight="52" AcceptsReturn="True" />
+                <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                        Command="{Binding ParseDeckCodeCommand}" Content="解析" />
+              </Grid>
               <TextBlock Grid.Row="3" Classes="caption"
                          Text="{Binding OwnDeckTotal, StringFormat='共剩余 {0} 张'}" />
               <ScrollViewer Grid.Row="4" Margin="0,4,0,0">

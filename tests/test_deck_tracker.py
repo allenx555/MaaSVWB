@@ -147,7 +147,7 @@ class DeckTrackerFromCodeTests(unittest.TestCase):
         tracker2 = DeckTracker.from_deck_code(code, catalog)
         self.assertEqual(tracker2.total_remaining, 3)
 
-
+    def test_real_catalog_deck_code_roundtrip(self) -> None:
         catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
         code = (
             "2.5.e3ls.e3ls.e3ls.e4Gg.e4Gg.e4Gg.d6jm.d6jm.d6jm.fPCm.fPCm.fPCm."
@@ -160,6 +160,21 @@ class DeckTrackerFromCodeTests(unittest.TestCase):
         # Verify a known card maps correctly
         self.assertEqual(tracker.initial_counts.get("10501110"), 3)  # 挥毫的怪物
         self.assertEqual(tracker.initial_counts.get("10253120"), 2)  # 夜曲将军·艾瑟拉
+
+    def test_real_catalog_combo_elf_with_hyphens(self) -> None:
+        catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
+        # Real combo-elf deck shared from in-game; contains IDs with trailing hyphens
+        # (e.g. fea-, etl-) that previously caused the regex to truncate early.
+        code = (
+            "#连击妖#\n#指定系列#\n#精灵#\n"
+            "1.1.e4Gg.e4Gg.e4Gg.eVLe.eVLe.fFRw.fFRw.fFRw.fds6.fds6.fds6."
+            "dhqm.dhqm.dhqm.etGk.etGk.etGk.fe5k.fe5k.fe5k.feLM.feLM.feLM."
+            "e6x8.e6x8.e6x8.fea-.fea-.fea-.etl-.etl-.etl-.feOU.feOU.feOU."
+            "etm8.etm8.fGAU.fGAU.fGAU\n"
+            "#在游戏中点击【卡牌】-【新牌组】-【使用牌组码】进行粘贴 #"
+        )
+        tracker = DeckTracker.from_deck_code(code, catalog)
+        self.assertEqual(tracker.total_remaining, 40)
 
 
 if __name__ == "__main__":
