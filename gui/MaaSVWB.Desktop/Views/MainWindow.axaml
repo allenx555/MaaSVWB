@@ -96,6 +96,30 @@
           </Border>
         </Grid>
       </TabItem>
+      <TabItem Header="记牌器">
+        <Grid Margin="24">
+          <Border Classes="card">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+              <TextBlock Classes="sectionTitle" Text="己方牌组剩余" />
+              <TextBlock Grid.Row="1" Classes="caption"
+                         Text="{Binding OwnDeckTotal, StringFormat='共剩余 {0} 张'}" />
+              <ScrollViewer Grid.Row="2" Margin="0,8,0,0">
+                <ItemsControl ItemsSource="{Binding OwnDeckEntries}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Count}" FontWeight="SemiBold"
+                                   Foreground="#2F6F73" VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Grid>
+          </Border>
+        </Grid>
+      </TabItem>
       <TabItem Header="设置">
         <ScrollViewer>
           <Grid Margin="24" ColumnDefinitions="*,340" ColumnSpacing="18">

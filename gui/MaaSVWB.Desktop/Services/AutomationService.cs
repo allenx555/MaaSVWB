@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using MaaSVWB.Desktop.Models;
 
 namespace MaaSVWB.Desktop.Services;
 
@@ -32,6 +34,8 @@ public sealed class AutomationService : IDisposable
             }
         }
     }
+
+    public event EventHandler<TrackerSnapshot>? TrackerUpdated;
 
     public async Task<int> RunAsync(
         string projectRoot,
@@ -131,7 +135,15 @@ public sealed class AutomationService : IDisposable
         {
             if (args.Data is not null)
             {
-                onOutput(FormatOutputLine(args.Data));
+                var formatted = FormatOutputLine(args.Data, out var snapshot);
+                if (snapshot is not null)
+                {
+                    TrackerUpdated?.Invoke(this, snapshot);
+                }
+                if (formatted is not null)
+                {
+                    onOutput(formatted);
+                }
             }
         };
         process.ErrorDataReceived += (_, args) =>
@@ -239,8 +251,9 @@ public sealed class AutomationService : IDisposable
         });
     }
 
-    private static string FormatOutputLine(string line)
+    private static string? FormatOutputLine(string line, out TrackerSnapshot? snapshot)
     {
+        snapshot = null;
         const string prefix = "@maasvwb-event ";
         if (!line.StartsWith(prefix, StringComparison.Ordinal))
         {
@@ -249,7 +262,17 @@ public sealed class AutomationService : IDisposable
         try
         {
             using var document = JsonDocument.Parse(line[prefix.Length..]);
-            if (document.RootElement.TryGetProperty("message", out var message))
+            var root = document.RootElement;
+            if (root.TryGetProperty("event", out var eventProp))
+            {
+                var eventType = eventProp.GetString();
+                if (eventType == "deck_update")
+                {
+                    snapshot = ParseTrackerSnapshot(root);
+                    return null;
+                }
+            }
+            if (root.TryGetProperty("message", out var message))
             {
                 return $"[状态] {message.GetString()}";
             }
@@ -259,6 +282,29 @@ public sealed class AutomationService : IDisposable
             return $"[事件格式错误] {line}";
         }
         return line;
+    }
+
+    private static TrackerSnapshot? ParseTrackerSnapshot(JsonElement root)
+    {
+        if (!root.TryGetProperty("entries", out var entriesEl) ||
+            entriesEl.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+        var total = root.TryGetProperty("total", out var totalEl) ? totalEl.GetInt32() : 0;
+        var entries = new List<TrackerEntry>();
+        foreach (var item in entriesEl.EnumerateArray())
+        {
+            var name = item.TryGetProperty("name", out var nameEl)
+                ? nameEl.GetString() ?? string.Empty
+                : string.Empty;
+            var count = item.TryGetProperty("remaining", out var countEl) ? countEl.GetInt32() : 0;
+            if (count > 0)
+            {
+                entries.Add(new TrackerEntry(name, count));
+            }
+        }
+        return new TrackerSnapshot(entries, total);
     }
 
     public void Dispose() => Stop();

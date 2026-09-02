@@ -15,6 +15,18 @@ def emit_event(event: str, message: str, **details: Any) -> None:
     print(EVENT_PREFIX + json.dumps(payload, ensure_ascii=False), flush=True)
 
 
+def emit_deck_update(
+    remaining: dict[str, int],
+    name_map: dict[str, str],
+) -> None:
+    entries = [
+        {"card_id": cid, "name": name_map.get(cid, cid), "remaining": count}
+        for cid, count in sorted(remaining.items())
+    ]
+    total = sum(remaining.values())
+    emit_event("deck_update", f"牌组剩余 {total} 张", entries=entries, total=total)
+
+
 class JsonTaskEventSink(TaskerEventSink):
     def on_raw_notification(self, _tasker, msg: str, details: dict[str, Any]) -> None:
         if not msg.startswith("Tasker.Task."):

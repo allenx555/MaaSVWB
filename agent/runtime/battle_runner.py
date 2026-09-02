@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 
+from battle_engine.deck_tracker import DeckTracker
 from battle_engine.models import BattleState, CardCatalog
 from battle_engine.observer import (
     ObservedHandCard,
@@ -25,6 +26,7 @@ from solution_engine.layout import BoardLayout
 from solution_engine.models import SolutionError
 
 from .backend import MaaBackend
+from .events import emit_deck_update
 
 
 LOGGER = logging.getLogger("maasvwb.battle")
@@ -56,6 +58,7 @@ class BattleRunner:
         self.layout = layout
         self.catalog = catalog
         self.policy = policy
+        self._deck_tracker = DeckTracker.from_profile(policy.profile)
 
     def is_start_state(self, frame) -> bool:
         """判断画面是否已经进入基础战斗流程。"""
@@ -250,6 +253,7 @@ class BattleRunner:
                 continue
             if not hand:
                 break
+            self._deck_tracker.update_hand(tuple(item.card for item in hand))
             board = self.backend.observe_board_state()
             if board is None:
                 LOGGER.warning("[出牌] 场上状态截图失败，跳过本次观测并重试")
@@ -300,6 +304,7 @@ class BattleRunner:
             )
             if changed:
                 played_counts[step.card_id] = played_counts.get(step.card_id, 0) + 1
+                self._deck_tracker.record_played(step.card_id)
                 no_progress = 0
             else:
                 no_progress += 1
@@ -309,6 +314,7 @@ class BattleRunner:
             time.sleep(0.6)
 
         self._attack_phase()
+        self._emit_tracker_events()
 
     def _observe_hand(self, energy: int) -> tuple[ObservedHandCard, ...] | None:
         frame = self.backend.capture_frame()
@@ -400,3 +406,7 @@ class BattleRunner:
                 raise SolutionError("随从攻击操作失败")
             remaining_index = index - 1
             time.sleep(0.8)
+
+    def _emit_tracker_events(self) -> None:
+        name_map = {cid: defn.name for cid, defn in self.catalog.cards.items()}
+        emit_deck_update(self._deck_tracker.remaining, name_map)

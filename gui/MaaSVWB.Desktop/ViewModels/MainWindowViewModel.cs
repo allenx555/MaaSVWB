@@ -17,6 +17,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string _logText = string.Empty;
     private string _statusText = "准备就绪";
     private bool _isBusy;
+    private int _ownDeckTotal;
 
     public MainWindowViewModel()
     {
@@ -67,6 +68,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             SolutionCatalog.Load(ProjectRoot, "tutorial"));
 
         AppendLog($"MaaSVWB 前端已启动，项目目录：{ProjectRoot}");
+        _automation.TrackerUpdated += OnTrackerUpdated;
         _ = RefreshDevicesAsync();
     }
 
@@ -75,6 +77,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public TaskTabViewModel Tutorial { get; }
 
     public ObservableCollection<string> Devices { get; } = [];
+
+    public ObservableCollection<TrackerEntry> OwnDeckEntries { get; } = [];
+
+    public int OwnDeckTotal
+    {
+        get => _ownDeckTotal;
+        private set => SetProperty(ref _ownDeckTotal, value);
+    }
 
     public string ProjectRoot
     {
@@ -275,6 +285,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             return false;
         }
 
+        OwnDeckEntries.Clear();
+        OwnDeckTotal = 0;
         IsBusy = true;
         StatusText = execute ? $"正在执行：{displayName}" : "正在测试连接";
         AppendLog(string.Empty);
@@ -356,5 +368,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         });
     }
 
-    public void Dispose() => _automation.Dispose();
+    private void OnTrackerUpdated(object? sender, TrackerSnapshot snapshot)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            OwnDeckEntries.Clear();
+            foreach (var entry in snapshot.Entries)
+            {
+                OwnDeckEntries.Add(entry);
+            }
+            OwnDeckTotal = snapshot.Total;
+        });
+    }
+
+    public void Dispose()
+    {
+        _automation.TrackerUpdated -= OnTrackerUpdated;
+        _automation.Dispose();
+    }
 }
