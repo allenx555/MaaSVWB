@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Avalonia.Threading;
 using MaaSVWB.Desktop.Models;
 using MaaSVWB.Desktop.Services;
@@ -387,12 +388,30 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         });
     }
 
+    private static readonly Regex DeckCodePattern =
+        new(@"\d+\.\d+(?:\.[A-Za-z0-9]+)+", RegexOptions.Compiled);
+
+    private static string? ExtractDeckCode(string raw)
+    {
+        var m = DeckCodePattern.Match(raw);
+        return m.Success ? m.Value : null;
+    }
+
     private void RebuildInitialTracker()
     {
         var code = _trackerDeckCode;
         var root = _projectRoot;
         if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(root))
+        {
+            Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; });
             return;
+        }
+        var canonical = ExtractDeckCode(code);
+        if (canonical is null)
+        {
+            Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; });
+            return;
+        }
         var catalogPath = Path.Combine(root, "assets", "battle", "card_catalog.json");
         if (!File.Exists(catalogPath))
             return;
@@ -415,7 +434,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                     }
                 }
             }
-            var parts = code.Trim().Split('.');
+            var parts = canonical.Split('.');
             var start = parts.Length >= 2
                 && int.TryParse(parts[0], out _)
                 && int.TryParse(parts[1], out _) ? 2 : 0;

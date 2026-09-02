@@ -67,11 +67,14 @@
                              Text="选好牌组后，请停在地城试炼关卡列表。快梦起手有任意 1 费牌时整手保留；没有 1 费牌时交换全部已识别卡牌。" />
                   <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="#80601D"
                              Text="目前支持的无限制牌组码（快梦）" />
-                  <TextBox MinHeight="68"
-                           IsReadOnly="True"
-                           TextWrapping="Wrap"
-                           Text="{Binding DungeonRecommendedDeckCode}"
-                           ToolTip.Tip="点击文本框后按 Ctrl+A 全选，再按 Ctrl+C 复制" />
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                    <TextBox MinHeight="68"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             Text="{Binding DungeonRecommendedDeckCode}" />
+                    <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Bottom"
+                            Click="OnCopyDeckCode" Content="复制" />
+                  </Grid>
                 </StackPanel>
               </Border>
 

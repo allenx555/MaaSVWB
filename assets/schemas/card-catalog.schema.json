@@ -61,7 +61,8 @@
                         "items": {
                             "enum": ["storm", "rush", "ward", "generated"]
                         }
-                    }
+                    },
+                    "deck_code_id": { "type": "string", "minLength": 1 }
                 },
                 "additionalProperties": false
             }

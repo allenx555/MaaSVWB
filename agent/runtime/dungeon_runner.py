@@ -44,6 +44,7 @@ class DungeonRunner:
 
     def run(self) -> None:
         while True:
+            self.battle_runner.reset_tracker()
             self._enter_or_resume_battle()
             outcome = self.battle_runner.run()
             if outcome is BattleOutcome.VICTORY:

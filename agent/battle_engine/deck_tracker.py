@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 from .models import BattleProfile, CardCatalog, ObservedCard
+
+# Matches the canonical deck code: two version numbers followed by card short-IDs,
+# e.g. "2.5.e3ls.e3ls.fGAU". Used to extract the code from multi-line share text.
+_DECK_CODE_RE = re.compile(r"\d+\.\d+(?:\.[A-Za-z0-9]+)+")
 
 
 @dataclass
@@ -28,7 +33,10 @@ class DeckTracker:
             for cid, defn in catalog.cards.items()
             if defn.deck_code_id
         }
-        parts = code.strip().split(".")
+        m = _DECK_CODE_RE.search(code)
+        if not m:
+            return cls(initial_counts={})
+        parts = m.group().split(".")
         if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
             parts = parts[2:]
         counts: dict[str, int] = {}

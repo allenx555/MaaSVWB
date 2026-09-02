@@ -63,11 +63,18 @@ class BattleRunner:
         self.layout = layout
         self.catalog = catalog
         self.policy = policy
-        if deck_code:
-            self._deck_tracker = DeckTracker.from_deck_code(deck_code, catalog)
-        else:
-            self._deck_tracker = DeckTracker.from_profile(policy.profile)
+        self._deck_code = deck_code
+        self._deck_tracker = self._make_tracker()
         self._hand_expanded = False
+
+    def _make_tracker(self) -> DeckTracker:
+        if self._deck_code:
+            return DeckTracker.from_deck_code(self._deck_code, self.catalog)
+        return DeckTracker.from_profile(self.policy.profile)
+
+    def reset_tracker(self) -> None:
+        """Reinitialise the deck tracker at the start of a new battle."""
+        self._deck_tracker = self._make_tracker()
 
     def is_start_state(self, frame) -> bool:
         """判断画面是否已经进入基础战斗流程。"""

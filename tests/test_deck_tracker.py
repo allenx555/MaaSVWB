@@ -123,7 +123,31 @@ class DeckTrackerFromCodeTests(unittest.TestCase):
         tracker = DeckTracker.from_deck_code("", catalog)
         self.assertEqual(tracker.total_remaining, 0)
 
-    def test_real_catalog_deck_code_roundtrip(self) -> None:
+    def test_multiline_share_text_is_extracted(self) -> None:
+        catalog = _make_catalog(("aaa", "aaa"), ("bbb", "bbb"))
+        multiline = "牌组名称\n作者名\n类别\n2.5.aaa.aaa.bbb\n粘贴说明"
+        tracker = DeckTracker.from_deck_code(multiline, catalog)
+        self.assertEqual(tracker.initial_counts.get("aaa"), 2)
+        self.assertEqual(tracker.initial_counts.get("bbb"), 1)
+        self.assertEqual(tracker.total_remaining, 3)
+
+    def test_no_valid_code_returns_empty_tracker(self) -> None:
+        catalog = _make_catalog(("aaa", "aaa"))
+        tracker = DeckTracker.from_deck_code("not a deck code at all", catalog)
+        self.assertEqual(tracker.total_remaining, 0)
+
+    def test_reset_restores_full_deck(self) -> None:
+        catalog = _make_catalog(("aaa", "aaa"), ("bbb", "bbb"))
+        code = "2.5.aaa.aaa.bbb"
+        tracker = DeckTracker.from_deck_code(code, catalog)
+        tracker.record_played("aaa")
+        tracker.record_played("bbb")
+        self.assertEqual(tracker.total_remaining, 1)
+        # Simulates BattleRunner.reset_tracker() — create a fresh tracker
+        tracker2 = DeckTracker.from_deck_code(code, catalog)
+        self.assertEqual(tracker2.total_remaining, 3)
+
+
         catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
         code = (
             "2.5.e3ls.e3ls.e3ls.e4Gg.e4Gg.e4Gg.d6jm.d6jm.d6jm.fPCm.fPCm.fPCm."
