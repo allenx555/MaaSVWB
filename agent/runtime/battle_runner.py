@@ -316,7 +316,7 @@ class BattleRunner:
             return None
         detail = self.backend.recognize(BATTLE_HAND_NAMES, frame=frame)
         if not detail or not detail.hit:
-            if not self.backend.tap(*self.layout.fixed_point("hand_expand")):
+            if not self._expand_hand_for_observation():
                 return ()
             time.sleep(0.4)
             frame = self.backend.capture_frame()
@@ -333,6 +333,26 @@ class BattleRunner:
             or "未识别到卡名",
         )
         return observed
+
+    def _expand_hand_for_observation(self) -> bool:
+        hand_count = self.backend.read_hand_count()
+        if hand_count == 0:
+            LOGGER.info("[手牌] 当前没有手牌，无需展开")
+            return False
+        if hand_count is not None:
+            try:
+                # 点击最右侧手牌：它在收拢牌扇中遮挡最少，也能确保少量
+                # 起手时不会误点到固定的右侧空白区域。
+                point = self.layout.indexed_point("hand", hand_count, hand_count)
+            except SolutionError:
+                LOGGER.warning(
+                    "[手牌] 布局不支持实时手牌数量 %d，回退固定展开位置",
+                    hand_count,
+                )
+            else:
+                LOGGER.info("[手牌] 点击最右侧第 %d 张牌展开手牌", hand_count)
+                return self.backend.tap(*point)
+        return self.backend.tap(*self.layout.fixed_point("hand_expand"))
 
     def _attack_phase(self) -> None:
         board = self.backend.observe_board_state()

@@ -73,7 +73,55 @@ class _AttackBackend:
         return True
 
 
+class _HandObservationBackend:
+    def __init__(self, hand_count: int | None) -> None:
+        self.hand_count = hand_count
+        self.taps: list[tuple[int, int]] = []
+        self._recognitions = iter(
+            (
+                SimpleNamespace(hit=False),
+                SimpleNamespace(
+                    hit=True,
+                    all_results=(
+                        SimpleNamespace(
+                            text="怨恨的栽培者", box=[700, 550, 100, 30]
+                        ),
+                    ),
+                ),
+            )
+        )
+
+    def capture_frame(self):
+        return object()
+
+    def recognize(self, _node: str, *, frame=None):
+        return next(self._recognitions)
+
+    def read_hand_count(self) -> int | None:
+        return self.hand_count
+
+    def tap(self, x: int, y: int) -> bool:
+        self.taps.append((x, y))
+        return True
+
+
 class BattleRunnerTests(unittest.TestCase):
+    @staticmethod
+    def _runner_with_backend(backend) -> BattleRunner:
+        catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
+        profile = BattleProfileRepository.for_project(PROJECT_ROOT, catalog).load(
+            "aggro_nightmare"
+        )
+        layout = BoardLayout.load(
+            PROJECT_ROOT / "assets" / "resource" / "layouts" / "default.json"
+        )
+        return BattleRunner(
+            cast(MaaBackend, backend),
+            layout,
+            catalog,
+            BattlePolicy(profile, catalog),
+        )
+
     def test_first_attached_turn_can_resume_after_partial_actions(self) -> None:
         self.assertTrue(BattleRunner._is_new_turn_energy(1, 1, None))
         self.assertTrue(BattleRunner._is_new_turn_energy(1, 3, None))
@@ -86,6 +134,31 @@ class BattleRunnerTests(unittest.TestCase):
     def test_tenth_turn_uses_full_energy_as_boundary(self) -> None:
         self.assertFalse(BattleRunner._is_new_turn_energy(0, 10, 10))
         self.assertTrue(BattleRunner._is_new_turn_energy(10, 10, 10))
+
+    def test_hand_observation_expands_from_rightmost_early_hand_card(self) -> None:
+        for hand_count, expected_point in ((4, (805, 665)), (5, (860, 665))):
+            with self.subTest(hand_count=hand_count):
+                backend = _HandObservationBackend(hand_count=hand_count)
+                runner = self._runner_with_backend(backend)
+
+                with patch("runtime.battle_runner.time.sleep"):
+                    observed = runner._observe_hand(energy=1)
+
+                self.assertEqual(backend.taps, [expected_point])
+                self.assertIsNotNone(observed)
+                assert observed is not None
+                self.assertEqual(
+                    [item.name for item in observed], ["怨恨的栽培者"]
+                )
+
+    def test_hand_observation_falls_back_when_count_is_unavailable(self) -> None:
+        backend = _HandObservationBackend(hand_count=None)
+        runner = self._runner_with_backend(backend)
+
+        with patch("runtime.battle_runner.time.sleep"):
+            runner._observe_hand(energy=1)
+
+        self.assertEqual(backend.taps, [(1025, 665)])
 
     def test_mulligan_swipes_only_cards_outside_keep_list(self) -> None:
         catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
