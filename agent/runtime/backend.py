@@ -381,6 +381,7 @@ class MaaBackend:
                 LOGGER.error("MuMu 录制包含未知触控数据: %r", data)
                 return None
             relative_x, relative_y = map(float, match.groups())
+            # MuMu 横屏录制仍使用旋转 90° 的设备坐标系，需交换轴并翻转纵轴。
             point = (
                 min(width - 1, max(0, round(relative_y * height))),
                 min(height - 1, max(0, round(height - relative_x * width))),

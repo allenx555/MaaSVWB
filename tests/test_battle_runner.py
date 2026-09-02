@@ -21,6 +21,7 @@ from battle_engine.repository import (  # noqa: E402
 from runtime.backend import MaaBackend, ObservedBoardState  # noqa: E402
 from runtime.battle_runner import BattleRunner  # noqa: E402
 from solution_engine.layout import BoardLayout  # noqa: E402
+from solution_engine.models import SolutionError  # noqa: E402
 
 
 class _MulliganBackend:
@@ -74,8 +75,9 @@ class _AttackBackend:
 
 
 class _HandObservationBackend:
-    def __init__(self, hand_count: int | None) -> None:
+    def __init__(self, hand_count: int | None, *, tap_succeeds: bool = True) -> None:
         self.hand_count = hand_count
+        self.tap_succeeds = tap_succeeds
         self.taps: list[tuple[int, int]] = []
         self._recognitions = iter(
             (
@@ -102,7 +104,7 @@ class _HandObservationBackend:
 
     def tap(self, x: int, y: int) -> bool:
         self.taps.append((x, y))
-        return True
+        return self.tap_succeeds
 
 
 class BattleRunnerTests(unittest.TestCase):
@@ -159,6 +161,24 @@ class BattleRunnerTests(unittest.TestCase):
             runner._observe_hand(energy=1)
 
         self.assertEqual(backend.taps, [(1025, 665)])
+
+    def test_hand_observation_returns_empty_only_for_confirmed_empty_hand(self) -> None:
+        backend = _HandObservationBackend(hand_count=0)
+        runner = self._runner_with_backend(backend)
+
+        observed = runner._observe_hand(energy=1)
+
+        self.assertEqual(observed, ())
+        self.assertEqual(backend.taps, [])
+
+    def test_hand_observation_raises_when_expand_tap_fails(self) -> None:
+        backend = _HandObservationBackend(hand_count=4, tap_succeeds=False)
+        runner = self._runner_with_backend(backend)
+
+        with self.assertRaisesRegex(SolutionError, "点击手牌展开失败"):
+            runner._observe_hand(energy=1)
+
+        self.assertEqual(backend.taps, [(805, 665)])
 
     def test_mulligan_swipes_only_cards_outside_keep_list(self) -> None:
         catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
