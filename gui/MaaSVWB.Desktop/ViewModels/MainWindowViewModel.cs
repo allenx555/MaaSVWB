@@ -158,9 +158,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         $"目标完成 {DungeonBattleCount} 场胜利；失败不会计入战斗次数";
 
     public string DungeonRecommendedDeckCode =>
-        "2.5.e3ls.e3ls.e3ls.e4Gg.e4Gg.e4Gg.d6jm.d6jm.d6jm.fPCm.fPCm.fPCm." +
-        "eSAM.eSAM.eSAM.cLuw.cLuw.cLuw.eeNc.eeNc.eeNc.fPCw.fPCw.fPCw.fnd6." +
-        "fnd6.fnd6.ckrU.ckrU.ckrU.eGFs.eGFs.eGFs.ckJ6.ckJ6.ckJ6.ckoq.ckoq." +
+        "2.5.e3ls.e3ls.e3ls.d6jm.d6jm.d6jm.fPCm.fPCm.fPCm.eSAM.eSAM.eSAM." +
+        "cLuw.cLuw.eeNc.eeNc.eeNc.f0oG.f0oG.f0oG.fPCw.fPCw.fPCw.fnd6.fnd6." +
+        "fnd6.fndG.fndG.fndG.ckrU.ckrU.ckrU.eGFs.eGFs.eGFs.ckJ6.ckJ6.ckoq." +
         "d7D0.d7D0";
 
     public string LogText
@@ -407,11 +407,32 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         return m.Success ? m.Value : null;
     }
 
+    // The card catalog ships in two layouts: the dev tree keeps it under
+    // assets/battle/, while the packaged install/ places it directly under
+    // battle/ (see tools/install.py). Also fall back to the app directory so
+    // the tracker works even if ProjectRoot is unset or points elsewhere.
+    private string? ResolveCatalogPath(string? root)
+    {
+        var roots = new[] { root, AppContext.BaseDirectory };
+        foreach (var baseDir in roots)
+        {
+            if (string.IsNullOrWhiteSpace(baseDir))
+                continue;
+            var packaged = Path.Combine(baseDir, "battle", "card_catalog.json");
+            if (File.Exists(packaged))
+                return packaged;
+            var dev = Path.Combine(baseDir, "assets", "battle", "card_catalog.json");
+            if (File.Exists(dev))
+                return dev;
+        }
+        return null;
+    }
+
     private void RebuildInitialTracker()
     {
         var code = _trackerDeckCode;
         var root = _projectRoot;
-        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(root))
+        if (string.IsNullOrWhiteSpace(code))
         {
             Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; TrackerParseStatus = string.Empty; });
             return;
@@ -422,28 +443,29 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             Dispatcher.UIThread.Post(() => { OwnDeckEntries.Clear(); OwnDeckTotal = 0; TrackerParseStatus = "未检测到有效牌组码"; });
             return;
         }
-        var catalogPath = Path.Combine(root, "assets", "battle", "card_catalog.json");
-        if (!File.Exists(catalogPath))
-        {
-            Dispatcher.UIThread.Post(() => TrackerParseStatus = "找不到卡牌数据（请检查设置中的项目目录）");
-            return;
-        }
         try
         {
-            using var stream = File.OpenRead(catalogPath);
-            using var doc = JsonDocument.Parse(stream);
+            // The catalog only maps short IDs to display names; parsing works without
+            // it (falling back to the raw short ID), so a missing file is non-fatal.
             var codeToName = new Dictionary<string, string>();
-            if (doc.RootElement.TryGetProperty("cards", out var cardsEl))
+            var catalogPath = ResolveCatalogPath(root);
+            var catalogFound = catalogPath is not null;
+            if (catalogFound)
             {
-                foreach (var card in cardsEl.EnumerateArray())
+                using var stream = File.OpenRead(catalogPath!);
+                using var doc = JsonDocument.Parse(stream);
+                if (doc.RootElement.TryGetProperty("cards", out var cardsEl))
                 {
-                    if (card.TryGetProperty("deck_code_id", out var cid) &&
-                        card.TryGetProperty("name", out var nm))
+                    foreach (var card in cardsEl.EnumerateArray())
                     {
-                        var shortId = cid.GetString();
-                        var name = nm.GetString();
-                        if (shortId != null && name != null)
-                            codeToName[shortId] = name;
+                        if (card.TryGetProperty("deck_code_id", out var cid) &&
+                            card.TryGetProperty("name", out var nm))
+                        {
+                            var shortId = cid.GetString();
+                            var name = nm.GetString();
+                            if (shortId != null && name != null)
+                                codeToName[shortId] = name;
+                        }
                     }
                 }
             }
@@ -465,13 +487,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 .ToList();
             var total = entries.Sum(e => e.Count);
             var kinds = entries.Count;
+            var status = catalogFound
+                ? $"已解析 {total} 张牌 / {kinds} 种"
+                : $"已解析 {total} 张牌 / {kinds} 种（未找到卡牌数据，仅显示牌组码）";
             Dispatcher.UIThread.Post(() =>
             {
                 OwnDeckEntries.Clear();
                 foreach (var entry in entries)
                     OwnDeckEntries.Add(entry);
                 OwnDeckTotal = total;
-                TrackerParseStatus = $"已解析 {total} 张牌 / {kinds} 种";
+                TrackerParseStatus = status;
             });
         }
         catch

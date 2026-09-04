@@ -15,6 +15,13 @@ class DeckTracker:
     """Tracks own-deck cards remaining during a battle.
 
     remaining = initial_copies - cards_in_hand_now - cards_played_total
+
+    换牌不计入：记牌器只在正式回合出牌时被更新，换回牌库的
+    起手牌会随第一次手牌快照自然扣除，不需要单独记录。
+
+    已知限制：暂不支持被「洗回牌库」或「弹回手牌」的卡牌。这类卡一旦经
+    ``record_played`` 记为打出便不会回退，而实际已重新回到牌库/手牌，因此
+    remaining 可能偏少。若将来需要，应在卡牌被移出场时相应回退计数。
     """
 
     initial_counts: dict[str, int]

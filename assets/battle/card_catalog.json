@@ -10490,7 +10490,7 @@
       "deck_code_id": "f0oG",
       "name": "恶魔鼓手·拉兹",
       "type": "follower",
-      "base_cost": 0,
+      "base_cost": 2,
       "templates": [
         "unused/10751120.png"
       ],
@@ -12860,7 +12860,7 @@
       "deck_code_id": "fndG",
       "name": "幽冥中尉",
       "type": "follower",
-      "base_cost": 0,
+      "base_cost": 2,
       "templates": [
         "unused/10951120.png"
       ],

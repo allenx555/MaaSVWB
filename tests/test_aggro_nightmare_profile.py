@@ -33,13 +33,14 @@ class AggroNightmareProfileTests(unittest.TestCase):
         self.assertEqual(set(self.profile.mulligan.keep), expected)
         self.assertTrue(self.profile.mulligan.keep_all_if_any_kept)
 
-    def test_world_is_first_and_brush_monster_is_last(self) -> None:
+    def test_eyethela_is_first_and_brush_monster_is_last(self) -> None:
         priorities = {
             card_id: rule.play_priority
             for card_id, rule in self.profile.cards.items()
         }
 
-        self.assertEqual(priorities["10503210"], max(priorities.values()))
+        # 10253120 = 夜曲将军·艾瑟拉（最高优先级随从）
+        self.assertEqual(priorities["10253120"], max(priorities.values()))
         self.assertEqual(priorities["10501110"], min(priorities.values()))
 
     def test_followers_except_brush_monster_precede_spells(self) -> None:
