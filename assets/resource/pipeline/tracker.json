@@ -1,0 +1,14 @@
+{
+    "运行记牌器": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "ExecuteDeckTracker",
+        "custom_action_param": {"deck_code": ""}
+    },
+    "识别_记牌器通用结算": {
+        "recognition": "OCR",
+        "roi": [300, 100, 680, 320],
+        "expected": ["^胜利$", "^勝利$", "^失败$", "^失敗$", "^WIN$", "^LOSE$", "^VICTORY$", "^DEFEAT$"],
+        "threshold": 0.7
+    }
+}

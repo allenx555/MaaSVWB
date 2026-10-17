@@ -20,6 +20,7 @@ def match_card_name(
     catalog: CardCatalog,
     *,
     minimum_score: float = 0.52,
+    minimum_margin: float = 0.0,
 ) -> tuple[str, float] | None:
     normalized = normalize_card_name(observed_name)
     if len(normalized) < 2:
@@ -46,6 +47,10 @@ def match_card_name(
     score, card_id = max(candidates, default=(0.0, ""))
     if score < minimum_score:
         return None
+    if minimum_margin > 0 and len(candidates) > 1:
+        runner_up = sorted(candidates, reverse=True)[1][0]
+        if score - runner_up < minimum_margin:
+            return None
     return card_id, score
 
 
@@ -110,10 +115,13 @@ def parse_hand_texts(
     energy: int,
     *,
     source_y: int = 665,
+    minimum_score: float = 0.52,
+    minimum_margin: float = 0.0,
 ) -> tuple[ObservedHandCard, ...]:
     matches: list[tuple[HandText, str, float]] = []
     for text in texts:
-        matched = match_card_name(text.text, catalog)
+        matched = match_card_name(text.text, catalog, minimum_score=minimum_score,
+                                  minimum_margin=minimum_margin)
         if matched is None:
             continue
         card_id, score = matched

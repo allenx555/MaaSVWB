@@ -72,9 +72,9 @@ class MaaBackend:
             return None
         return np.array(self.controller.cached_image, copy=True)
 
-    def read_hand_count(self) -> int | None:
+    def read_hand_count(self, *, frame=_FRAME_UNSET) -> int | None:
         """从盘面左下角牌堆状态栏读取当前手牌数。"""
-        detail = self.recognize(CURRENT_HAND_COUNT)
+        detail = self.recognize(CURRENT_HAND_COUNT, frame=frame)
         result = detail.best_result if detail and detail.hit else None
         text = getattr(result, "text", "")
         match = re.search(r"\d+", text)

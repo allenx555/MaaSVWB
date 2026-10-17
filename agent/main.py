@@ -21,6 +21,7 @@ def main():
 
     from actions.execute_solution import ExecuteSolution
     from actions.execute_dungeon import ExecuteDungeon
+    from actions.execute_tracker import ExecuteDeckTracker
 
     project_root = (
         Path(sys.executable).resolve().parent.parent
@@ -30,6 +31,7 @@ def main():
     Tasker.set_log_dir(project_root / "debug")
     AgentServer.custom_action("ExecuteSolution")(ExecuteSolution)
     AgentServer.custom_action("ExecuteDungeon")(ExecuteDungeon)
+    AgentServer.custom_action("ExecuteDeckTracker")(ExecuteDeckTracker)
 
     socket_id = sys.argv[-1]
 

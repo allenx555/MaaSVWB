@@ -24,6 +24,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private int _ownDeckTotal;
     private string _trackerDeckCode;
     private string _trackerParseStatus = string.Empty;
+    private string _trackerStatus = "牌组预览，尚未开始监听";
+    private bool _trackingActive;
+    private string _trackerSessionId = string.Empty;
+    private long _trackerSequence;
 
     public MainWindowViewModel()
     {
@@ -39,10 +43,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         RefreshDevicesCommand = new AsyncCommand(RefreshDevicesAsync, () => !IsBusy);
         TestConnectionCommand = new AsyncCommand(TestConnectionAsync, () => !IsBusy);
         DungeonRunCommand = new AsyncCommand(RunDungeonAsync, () => !IsBusy);
+        TrackerRunCommand = new AsyncCommand(RunTrackerAsync, () => !IsBusy);
         StopCommand = new RelayCommand(Stop, () => IsBusy);
         SaveSettingsCommand = new RelayCommand(SaveSettings);
         ClearLogCommand = new RelayCommand(() => LogText = string.Empty);
-        ParseDeckCodeCommand = new RelayCommand(RebuildInitialTracker);
+        ParseDeckCodeCommand = new RelayCommand(RebuildInitialTracker, () => !IsBusy);
 
         Puzzle = new TaskTabViewModel(
             this,
@@ -106,7 +111,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         get => _trackerDeckCode;
         set
         {
-            if (SetProperty(ref _trackerDeckCode, value ?? string.Empty))
+            if (!IsBusy && SetProperty(ref _trackerDeckCode, value ?? string.Empty))
                 RebuildInitialTracker();
         }
     }
@@ -115,6 +120,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         get => _projectRoot;
         set => SetProperty(ref _projectRoot, value);
+    }
+
+    public bool CanEditTracker => !IsBusy;
+
+    public string TrackerStatus
+    {
+        get => _trackerStatus;
+        private set => SetProperty(ref _trackerStatus, value);
     }
 
     public string PythonPath
@@ -185,6 +198,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 RefreshDevicesCommand.RaiseCanExecuteChanged();
                 TestConnectionCommand.RaiseCanExecuteChanged();
                 DungeonRunCommand.RaiseCanExecuteChanged();
+                TrackerRunCommand.RaiseCanExecuteChanged();
+                ParseDeckCodeCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(CanEditTracker));
                 StopCommand.RaiseCanExecuteChanged();
             }
         }
@@ -195,6 +211,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public AsyncCommand TestConnectionCommand { get; }
 
     public AsyncCommand DungeonRunCommand { get; }
+    public AsyncCommand TrackerRunCommand { get; }
 
     public RelayCommand StopCommand { get; }
 
@@ -315,6 +332,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         OwnDeckEntries.Clear();
         OwnDeckTotal = 0;
         RebuildInitialTracker();
+        _trackingActive = execute && category is "tracker" or "dungeon";
+        _trackerSessionId = string.Empty;
+        _trackerSequence = 0;
+        TrackerStatus = _trackingActive ? "正在连接，等待对局识别…" : "牌组预览，未监听";
         IsBusy = true;
         StatusText = execute ? $"正在执行：{displayName}" : "正在测试连接";
         AppendLog(string.Empty);
@@ -352,6 +373,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
         finally
         {
+            _trackingActive = false;
+            TrackerStatus = $"{StatusText}；当前列表为预览或最后一次估计，已不再更新";
             IsBusy = false;
         }
     }
@@ -366,6 +389,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             execute: true,
             skipCompleted: false,
             battleCount: DungeonBattleCount);
+    }
+
+    private async Task RunTrackerAsync()
+    {
+        var code = ExtractDeckCode(TrackerDeckCode);
+        if (code is null || code.Split('.').Length - 2 != 40)
+        {
+            TrackerStatus = "请先输入完整的 40 张牌组码";
+            return;
+        }
+        SaveSettings();
+        await RunAutomationAsync("tracker", "", "独立记牌（只读监听）",
+            execute: true, skipCompleted: false);
     }
 
     private void Stop()
@@ -399,7 +435,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     private static readonly Regex DeckCodePattern =
-        new(@"\d+\.\d+(?:\.[A-Za-z0-9-]+)+", RegexOptions.Compiled);
+        new(@"\d+\.\d+(?:\.[A-Za-z0-9_-]+)+", RegexOptions.Compiled);
 
     private static string? ExtractDeckCode(string raw)
     {
@@ -430,6 +466,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void RebuildInitialTracker()
     {
+        if (IsBusy) return;
+        TrackerStatus = "牌组预览，尚未开始监听";
         var code = _trackerDeckCode;
         var root = _projectRoot;
         if (string.IsNullOrWhiteSpace(code))
@@ -509,12 +547,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         Dispatcher.UIThread.Post(() =>
         {
+            if (!_trackingActive) return;
+            if (_trackerSessionId == snapshot.SessionId && snapshot.Sequence <= _trackerSequence)
+                return;
+            _trackerSessionId = snapshot.SessionId;
+            _trackerSequence = snapshot.Sequence;
             OwnDeckEntries.Clear();
             foreach (var entry in snapshot.Entries)
             {
                 OwnDeckEntries.Add(entry);
             }
             OwnDeckTotal = snapshot.Total;
+            TrackerStatus = $"{snapshot.Reason} · 更新于 {DateTime.Now:HH:mm:ss}";
         });
     }
 

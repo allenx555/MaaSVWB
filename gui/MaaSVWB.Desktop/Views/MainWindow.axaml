@@ -104,12 +104,13 @@
       <TabItem Header="记牌器">
         <Grid Margin="24">
           <Border Classes="card">
-            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="8">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="8">
               <TextBlock Classes="sectionTitle" Text="记牌器" />
               <TextBlock Grid.Row="1" Classes="caption" TextWrapping="Wrap"
-                         Text="粘贴游戏内复制的牌组长码或多行分享文本，点击解析后在下方展示卡牌列表。&#10;注：暂不支持被洗回牌库或弹回手牌的卡牌记录，这类卡牌会被当作已打出，剩余数可能偏少。" />
+                         Text="粘贴 40 张牌组码后开始监听，可用于地城、练习及普通对局。独立模式只截图，不点击；请从开局开始，在己方回合展开手牌并保持片刻。地城自动运行时会自动记牌，无需另开监听。&#10;显示的是估计值：漏帧、同名换牌、生成、回手及洗回牌库可能造成偏差；中途接入无法恢复此前抽牌。未识别到换牌或结算的连局，请停止后重新开始。" />
               <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
                 <TextBox Text="{Binding TrackerDeckCode}"
+                         IsEnabled="{Binding CanEditTracker}"
                          Watermark="粘贴牌组长码或游戏分享文本（支持多行）"
                          TextWrapping="Wrap" MinHeight="52" AcceptsReturn="True" />
                 <Button Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Bottom"
@@ -118,8 +119,13 @@
               <TextBlock Grid.Row="3" Classes="caption"
                          Text="{Binding TrackerParseStatus}" />
               <TextBlock Grid.Row="4" Classes="caption"
-                         Text="{Binding OwnDeckTotal, StringFormat='共剩余 {0} 张'}" />
-              <ScrollViewer Grid.Row="5" Margin="0,4,0,0">
+                         Text="{Binding OwnDeckTotal, StringFormat='预览 / 估计剩余 {0} 张'}" />
+              <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="10">
+                <Button Classes="primary" Command="{Binding TrackerRunCommand}" Content="开始监听" />
+                <Button Classes="secondary" Command="{Binding StopCommand}" Content="停止运行" />
+              </StackPanel>
+              <TextBlock Grid.Row="6" Classes="caption" TextWrapping="Wrap" Text="{Binding TrackerStatus}" />
+              <ScrollViewer Grid.Row="7" Margin="0,4,0,0">
                 <ItemsControl ItemsSource="{Binding OwnDeckEntries}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>

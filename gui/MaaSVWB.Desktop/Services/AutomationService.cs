@@ -108,7 +108,7 @@ public sealed class AutomationService : IDisposable
             startInfo.ArgumentList.Add("--battle-count");
             startInfo.ArgumentList.Add(battleCount.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
-        else
+        else if (!string.Equals(category, "tracker", StringComparison.OrdinalIgnoreCase))
         {
             startInfo.ArgumentList.Add("--solution");
             startInfo.ArgumentList.Add(solutionId);
@@ -287,6 +287,10 @@ public sealed class AutomationService : IDisposable
         {
             return $"[事件格式错误] {line}";
         }
+        catch (Exception error) when (error is InvalidOperationException or FormatException or OverflowException)
+        {
+            return $"[事件字段错误] {line}";
+        }
         return line;
     }
 
@@ -310,7 +314,11 @@ public sealed class AutomationService : IDisposable
                 entries.Add(new TrackerEntry(name, count));
             }
         }
-        return new TrackerSnapshot(entries, total);
+        return new TrackerSnapshot(entries, total,
+            root.TryGetProperty("session_id", out var session) ? session.GetString() ?? "" : "",
+            root.TryGetProperty("sequence", out var sequence) ? sequence.GetInt64() : 0,
+            root.TryGetProperty("state", out var state) ? state.GetString() ?? "" : "",
+            root.TryGetProperty("reason", out var reason) ? reason.GetString() ?? "" : "");
     }
 
     public void Dispose() => Stop();

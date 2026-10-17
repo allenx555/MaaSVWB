@@ -18,13 +18,14 @@ def emit_event(event: str, message: str, **details: Any) -> None:
 def emit_deck_update(
     remaining: dict[str, int],
     name_map: dict[str, str],
+    **metadata: Any,
 ) -> None:
     entries = [
         {"card_id": cid, "name": name_map.get(cid, cid), "remaining": count}
         for cid, count in sorted(remaining.items())
     ]
     total = sum(remaining.values())
-    emit_event("deck_update", f"牌组剩余 {total} 张", entries=entries, total=total)
+    emit_event("deck_update", f"牌组估计剩余 {total} 张", entries=entries, total=total, **metadata)
 
 
 class JsonTaskEventSink(TaskerEventSink):

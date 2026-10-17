@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +21,8 @@ from battle_engine.repository import (  # noqa: E402
 )
 from runtime.backend import MaaBackend, ObservedBoardState  # noqa: E402
 from runtime.battle_runner import BattleRunner  # noqa: E402
+from runtime.hand_observer import HandObservation  # noqa: E402
+from battle_engine.observer import HandText, parse_hand_texts  # noqa: E402
 from solution_engine.layout import BoardLayout  # noqa: E402
 from solution_engine.models import SolutionError  # noqa: E402
 
@@ -139,6 +141,29 @@ class _EvolutionBackend:
 
 
 class BattleRunnerTests(unittest.TestCase):
+    def test_play_then_energy_failure_does_not_double_count_or_wait_for_turn_end(self):
+        backend = MagicMock(spec=MaaBackend)
+        backend.read_energy_points.side_effect = [(1, 1), None]
+        backend.observe_board_state.return_value = ObservedBoardState(0, 0, ())
+        backend.wait_changed.return_value = True
+        backend.swipe.return_value = True
+        runner = self._runner_with_backend(backend)
+        hand = parse_hand_texts((HandText("怨恨的栽培者", 400, 580, 100, 20),),
+                                runner.catalog, energy=1)
+        with (
+            patch.object(runner, "_observe_hand", return_value=hand),
+            patch.object(runner._tracker_observer, "observe", return_value=HandObservation(hand, True)),
+            patch("runtime.battle_runner.time.sleep"),
+            patch("runtime.tracker_session.emit_deck_update") as events,
+        ):
+            runner._play_cards()
+        self.assertEqual(runner._deck_tracker.total_remaining, 39)
+        self.assertEqual(runner._deck_tracker.hand_snapshot.get("10251120"), 0)
+        self.assertEqual(runner._deck_tracker.played_total.get("10251120"), 1)
+        backend.swipe.assert_called_once()
+        self.assertTrue(any(call.kwargs["state"] == "tracking" for call in events.call_args_list))
+        self.assertEqual(events.call_args.kwargs["state"], "uncertain")
+
     @staticmethod
     def _runner_with_backend(backend) -> BattleRunner:
         catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
@@ -370,7 +395,6 @@ class BattleRunnerTests(unittest.TestCase):
             ) as play_cards,
             patch.object(runner, "_try_evolve_played_followers") as post_play,
             patch.object(runner, "_attack_phase") as attack,
-            patch.object(runner, "_emit_tracker_events") as emit,
         ):
             runner._execute_turn()
 
@@ -378,7 +402,6 @@ class BattleRunnerTests(unittest.TestCase):
         play_cards.assert_called_once_with()
         post_play.assert_not_called()
         attack.assert_called_once_with()
-        emit.assert_called_once_with()
 
     def test_failed_start_evolution_retries_after_playing_followers(self) -> None:
         runner = self._runner_with_backend(_EvolutionBackend(0, ()))
@@ -392,7 +415,6 @@ class BattleRunnerTests(unittest.TestCase):
                 runner, "_try_evolve_played_followers", return_value=True
             ) as post_play,
             patch.object(runner, "_attack_phase"),
-            patch.object(runner, "_emit_tracker_events"),
         ):
             runner._execute_turn()
 

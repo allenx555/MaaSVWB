@@ -25,6 +25,9 @@ from maa.toolkit import Toolkit  # noqa: E402
 
 from actions.execute_solution import ExecuteSolution  # noqa: E402
 from actions.execute_dungeon import ExecuteDungeon  # noqa: E402
+from actions.execute_tracker import ExecuteDeckTracker  # noqa: E402
+from battle_engine.deck_tracker import DeckTracker  # noqa: E402
+from battle_engine.repository import CardCatalogRepository  # noqa: E402
 from runtime.events import JsonContextEventSink, JsonTaskEventSink, emit_event  # noqa: E402
 from runtime.session import choose_device, connect_controller, create_tasker  # noqa: E402
 
@@ -46,7 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--serial", help="设备地址/序列号；不填时使用发现到的第一台设备")
     parser.add_argument(
         "--task",
-        choices=("tutorial", "puzzle", "dungeon"),
+        choices=("tutorial", "puzzle", "dungeon", "tracker"),
         default="puzzle",
         help="执行的任务类型",
     )
@@ -57,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="真正执行点击/拖动；不加此参数时只连接并截图",
+        help="启动任务（tracker 仅截图识别）；不加此参数时只连接并截图",
     )
     parser.add_argument(
         "--skip-completed",
@@ -171,8 +174,13 @@ def main() -> int:
     solution_id = args.solution or ("puzzle_001" if args.task == "puzzle" else None)
     if args.battle_count < 1 or args.battle_count > 99:
         raise RuntimeError("战斗次数必须在 1 到 99 之间。")
-    if args.execute and args.task != "dungeon" and not solution_id:
+    if args.execute and args.task not in {"dungeon", "tracker"} and not solution_id:
         raise RuntimeError("执行教程时必须通过 --solution 指定已录入的教程脚本。")
+    if args.execute and args.task == "tracker":
+        catalog = CardCatalogRepository.for_project(PROJECT_ROOT).load()
+        tracker = DeckTracker.from_deck_code(args.deck_code or "", catalog)
+        if tracker.total_remaining != 40 or set(tracker.initial_counts) - set(catalog.cards):
+            raise RuntimeError("独立记牌需要完整的 40 张牌组码，且所有卡牌须在目录中。")
 
     Toolkit.init_option(str(PROJECT_ROOT))
     if args.save_draw:
@@ -197,11 +205,15 @@ def main() -> int:
         PROJECT_ROOT,
         controller,
         ExecuteSolution(),
-        {"ExecuteDungeon": ExecuteDungeon()},
+        {"ExecuteDungeon": ExecuteDungeon(), "ExecuteDeckTracker": ExecuteDeckTracker()},
     )
     tasker.add_sink(JsonTaskEventSink())
     tasker.add_context_sink(JsonContextEventSink())
-    if args.task == "dungeon":
+    if args.task == "tracker":
+        entry = "运行记牌器"
+        display_target = "独立只读记牌"
+        override = {entry: {"custom_action_param": {"deck_code": args.deck_code}}}
+    elif args.task == "dungeon":
         entry = "执行地城试炼"
         display_target = f"{args.profile} / {args.battle_count} 场胜利"
         override = {

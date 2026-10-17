@@ -10,7 +10,6 @@ from battle_engine.models import BattleState, CardCatalog
 from battle_engine.observer import (
     HandText,
     ObservedHandCard,
-    normalize_card_name,
     parse_hand_texts,
     recognition_results_to_hand_texts,
 )
@@ -30,7 +29,8 @@ from solution_engine.layout import BoardLayout
 from solution_engine.models import SolutionError
 
 from .backend import MaaBackend
-from .events import emit_deck_update
+from .hand_observer import HandObserver, hand_is_expanded
+from .tracker_session import DeckTrackingSession
 
 
 LOGGER = logging.getLogger("maasvwb.battle")
@@ -65,6 +65,8 @@ class BattleRunner:
         self.policy = policy
         self._deck_code = deck_code
         self._deck_tracker = self._make_tracker()
+        self._tracker_session = DeckTrackingSession(self._deck_tracker, catalog, "dungeon")
+        self._tracker_observer = HandObserver(backend, self._tracker_session.candidate_catalog())
         self._hand_expanded = False
 
     def _make_tracker(self) -> DeckTracker:
@@ -75,6 +77,9 @@ class BattleRunner:
     def reset_tracker(self) -> None:
         """Reinitialise the deck tracker at the start of a new battle."""
         self._deck_tracker = self._make_tracker()
+        self._tracker_session = DeckTrackingSession(self._deck_tracker, self.catalog, "dungeon")
+        self._tracker_observer = HandObserver(self.backend, self._tracker_session.candidate_catalog())
+        self._tracker_session.publish("waiting", "新对局：等待确认起手")
 
     def is_start_state(self, frame) -> bool:
         """判断画面是否已经进入基础战斗流程。"""
@@ -265,7 +270,6 @@ class BattleRunner:
             self._try_evolve_played_followers(played_followers)
 
         self._attack_phase()
-        self._emit_tracker_events()
 
     def _play_cards(self) -> tuple[str, ...]:
         played_counts: dict[str, int] = {}
@@ -274,16 +278,23 @@ class BattleRunner:
         for _ in range(self.policy.profile.safety.max_actions_per_turn):
             energy_pair = self.backend.read_energy_points()
             if energy_pair is None:
+                self._tracker_session.invalidate("能量识别失败，保留上次记牌结果")
                 break
             energy, _maximum = energy_pair
             hand = self._observe_hand(energy)
+            # Tracker observations are independent of the policy's permissive OCR.
+            # Verify the complete hand twice, including a genuinely empty hand.
+            for _sample in range(2):
+                self._tracker_session.observe(
+                    self._tracker_observer.observe(self.backend.capture_frame())
+                )
+                time.sleep(0.15)
             if hand is None:
                 LOGGER.warning("[出牌] 截图失败，跳过本次观测并重试")
                 time.sleep(0.2)
                 continue
             if not hand:
                 break
-            self._deck_tracker.update_hand(tuple(item.card for item in hand))
             board = self.backend.observe_board_state()
             if board is None:
                 LOGGER.warning("[出牌] 场上状态截图失败，跳过本次观测并重试")
@@ -338,7 +349,7 @@ class BattleRunner:
                 # 必须再次展开，不能沿用本地缓存状态。
                 self._hand_expanded = False
                 played_counts[step.card_id] = played_counts.get(step.card_id, 0) + 1
-                self._deck_tracker.record_played(step.card_id)
+                self._tracker_session.record_played(step.card_id)
                 definition = self.catalog.cards.get(step.card_id)
                 if definition is not None and definition.type == "follower":
                     played_followers.append(step.card_id)
@@ -455,16 +466,7 @@ class BattleRunner:
     @staticmethod
     def _hand_texts_are_expanded(texts: tuple[HandText, ...]) -> bool:
         """用卡名文本框位置区分展开手牌与右侧折叠牌扇。"""
-        for text in texts:
-            normalized = normalize_card_name(text.text)
-            if (
-                len(normalized) >= 2
-                and not normalized.isdigit()
-                and 560 <= text.y <= 610
-                and text.height >= 14
-            ):
-                return True
-        return False
+        return hand_is_expanded(texts)
 
     def _expand_hand_for_observation(self) -> bool | None:
         if self._hand_expanded:
@@ -525,7 +527,3 @@ class BattleRunner:
                 raise SolutionError("随从攻击操作失败")
             remaining_index = index - 1
             time.sleep(0.8)
-
-    def _emit_tracker_events(self) -> None:
-        name_map = {cid: defn.name for cid, defn in self.catalog.cards.items()}
-        emit_deck_update(self._deck_tracker.remaining, name_map)

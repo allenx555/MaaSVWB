@@ -65,16 +65,15 @@ class DeckTrackerTests(unittest.TestCase):
         initial = self.tracker.initial_counts[card_id]
         self.assertEqual(remaining.get(card_id, 0), initial - 1)
 
-    def test_hand_and_played_together_reduce_remaining(self) -> None:
+    def test_play_moves_same_copy_out_of_hand_without_double_deduction(self) -> None:
         card_id = next(iter(self.tracker.initial_counts))
         initial = self.tracker.initial_counts[card_id]
-        # Simulate drawing and then playing the same card on the same turn:
-        # hand snapshot says 1 in hand, played_total says 1 played
-        # remaining = initial - 1 (in hand) - 1 (played) = initial - 2
         self.tracker.update_hand((_make_card(card_id),))
         self.tracker.record_played(card_id)
         remaining = self.tracker.remaining
-        self.assertEqual(remaining.get(card_id, 0), max(0, initial - 2))
+        self.assertEqual(remaining.get(card_id, 0), initial - 1)
+        self.tracker.update_hand(())
+        self.assertEqual(self.tracker.remaining.get(card_id, 0), initial - 1)
 
     def test_remaining_never_goes_below_zero(self) -> None:
         card_id = next(iter(self.tracker.initial_counts))
@@ -96,10 +95,16 @@ class DeckTrackerTests(unittest.TestCase):
         self.assertEqual(self.tracker.remaining.get(card_id, 0), initial - 1)
         # Replace snapshot with empty hand (card was played, new hand has no copies)
         self.tracker.update_hand(())
-        self.assertEqual(self.tracker.remaining.get(card_id, 0), initial)
+        self.assertEqual(self.tracker.remaining.get(card_id, 0), initial - 1)
+        self.tracker.update_hand((_make_card(card_id),))
+        self.assertEqual(self.tracker.remaining.get(card_id, 0), initial - 2)
 
 
 class DeckTrackerFromCodeTests(unittest.TestCase):
+    def test_underscore_is_not_silently_truncated(self) -> None:
+        tracker = DeckTracker.from_deck_code("2.5.a_b.a_b.c-d", _make_catalog())
+        self.assertEqual(tracker.initial_counts, {"a_b": 2, "c-d": 1})
+
     def test_prefix_stripped_and_counts_correct(self) -> None:
         catalog = _make_catalog(("aaa", "aaa"), ("bbb", "bbb"))
         tracker = DeckTracker.from_deck_code("2.5.aaa.aaa.bbb", catalog)

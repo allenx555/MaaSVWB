@@ -7,21 +7,21 @@ from .models import BattleProfile, CardCatalog, ObservedCard
 
 # Matches the canonical deck code: two version numbers followed by card short-IDs,
 # e.g. "2.5.e3ls.e3ls.fGAU". Used to extract the code from multi-line share text.
-_DECK_CODE_RE = re.compile(r"\d+\.\d+(?:\.[A-Za-z0-9-]+)+")
+_DECK_CODE_RE = re.compile(r"\d+\.\d+(?:\.[A-Za-z0-9_-]+)+")
 
 
 @dataclass
 class DeckTracker:
     """Tracks own-deck cards remaining during a battle.
 
-    remaining = initial_copies - cards_in_hand_now - cards_played_total
+    remaining = initial_copies - cards_in_hand_now - cards_removed_from_hand
 
     换牌不计入：记牌器只在正式回合出牌时被更新，换回牌库的
     起手牌会随第一次手牌快照自然扣除，不需要单独记录。
 
-    已知限制：暂不支持被「洗回牌库」或「弹回手牌」的卡牌。这类卡一旦经
-    ``record_played`` 记为打出便不会回退，而实际已重新回到牌库/手牌，因此
-    remaining 可能偏少。若将来需要，应在卡牌被移出场时相应回退计数。
+    played_total includes confirmed automatic plays and observed disappearances.
+    Snapshot differences cannot distinguish generated cards, returns or hidden
+    same-name replacements. Values are estimates, never authoritative deck state.
     """
 
     initial_counts: dict[str, int]
@@ -55,15 +55,26 @@ class DeckTracker:
         return cls(initial_counts=counts)
 
     def update_hand(self, hand: tuple[ObservedCard, ...]) -> None:
-        """Snapshot the current hand (called each time the hand is observed)."""
+        """Accept a complete hand; disappearance never puts a card back in deck.
+
+        Callers must reject partial OCR results before calling this method.
+        Unobserved same-name replacements and generated/returned cards remain
+        ambiguous, so snapshot-based counts are estimates.
+        """
         snapshot: dict[str, int] = {}
         for card in hand:
             snapshot[card.card_id] = snapshot.get(card.card_id, 0) + 1
+        for card_id, old_count in self.hand_snapshot.items():
+            disappeared = max(0, old_count - snapshot.get(card_id, 0))
+            self.played_total[card_id] = self.played_total.get(card_id, 0) + disappeared
         self.hand_snapshot = snapshot
 
     def record_played(self, card_id: str) -> None:
         """Record one copy of card_id successfully played from hand."""
         self.played_total[card_id] = self.played_total.get(card_id, 0) + 1
+        # Atomically move the known card out of the hand. A failed next OCR must
+        # not count the same physical copy both in hand and as played.
+        self.hand_snapshot[card_id] = max(0, self.hand_snapshot.get(card_id, 0) - 1)
 
     @property
     def remaining(self) -> dict[str, int]:
