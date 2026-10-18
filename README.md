@@ -35,10 +35,11 @@ MaaSVWB 通过 OCR 定位游戏内的教程、盘面解密条目和卡牌名称�
 
 - 已完成安卓模拟器连接、列表 OCR 导航、教程遮罩跳过和语义动作框架；
 - 已录入盘面解密与对战教程的完整目录，尚无脚本的条目会在 GUI 中显示为灰色；
-- 当前提供 5 项可执行盘面解密：
+- 当前提供 6 项可执行盘面解密：
   - 同时学习【守护】【突进】【疾驰】吧！；
   - 学习／熟练运用巴巴洛丝皇家护卫吧！；
   - 学习／熟练运用护符主教吧！；
+  - 学习卡特斯罗特超越者吧！；
 - 语义执行器支持出牌与指定目标、随从攻击、模式选择、普通进化、超进化、护符启动、
   回合结束、能量点识别及额外能量点操作；
 - 基础战斗组件支持按 Battle Profile 交换起手；当前内置快梦策略在起手有任意 1 费牌时整手保留，否则交换全部已识别起手；
@@ -155,7 +156,7 @@ tools/                         环境、检查、调试和发布脚本
 
 ## 添加解法
 
-盘面解密支持两种编写方式，可以按关卡任选其一：
+盘面解密优先使用语义动作，也支持 MuMu 录制回放：
 
 - 语义动作：使用 `play_card`、`attack`、`select_choice`、`evolve`、
   `activate_amulet` 和 `end_turn` 等动作描述解法。它便于阅读和调整，也能在每步操作前
@@ -165,17 +166,28 @@ tools/                         环境、检查、调试和发布脚本
   `replay_mumu_script` 执行。运行时只读取每个手势的起点、终点和时序，并由
   MaaFramework 生成点击或直线拖动，不会原样重放录制中的抖动轨迹。
 
+已有 B 站等来源的完整通关视频时，可以先用 `tools/setup_video_tools.ps1` 准备独立环境，
+再用 `tools/puzzle_video.py` 下载指定分 P、抽帧去重、生成带时间戳的概览及校验候选 JSON。
+根据关键帧整理每步前后的手牌、场上占位和目标，再生成语义解法；需要核对当前游戏版本、
+手动与自动进化，以及随从离场后的序号。视频不能直接作为 `.mmor` 录制回放。
+具体步骤见[视频转解法流程与工具](./docs/zh_cn/develop/video-to-solution.md)；
+使用 AI 制作新关时，可从[新聊天最小入口与提示词](./docs/zh_cn/develop/video-solution-start.md)开始，
+只读取目标关材料，并通过本地证据文件交接进度。
+
 对战教程包含多回合等待和大量固定教学对话，推荐使用录制回放；可先用 `wait_for` 和
 `wait_until_gone` 将回放起点同步到稳定提示消失后的画面。录制依赖固定分辨率和一致的
 起始状态，当前项目以横屏 `1280 × 720` 为基准。
 
 添加流程：
 
-1. 参考 `docs/examples/puzzle_demo.json`，在 `assets/resource/solutions/` 新建与 ID 同名的 JSON；
-2. 在对应的 `assets/catalog/*_catalog.json` 中加入目录项；
-3. 选择语义动作，或添加 `.mmor` 录制并使用 `replay_mumu_script`；
-4. 运行 `python tools/generate_interface.py` 更新通用 Project Interface；
-5. 执行 `tools/test.ps1`。
+1. 在 `assets/catalog/*_catalog.json` 中匹配关卡，复用已有目录 ID；尚无目录项时再新增；
+2. 参考相近的正式解法，在 `assets/resource/solutions/` 新建与 ID 同名的 JSON；
+3. 手工编写或根据视频生成语义动作；使用录制回放时，添加 `.mmor` 并引用 `replay_mumu_script`；
+4. 校验 JSON，在获授权的横屏 `1280 × 720` 模拟器中验证；盘面解密需确认从列表启动、通关并返回列表；
+5. 运行 `python tools/generate_interface.py` 更新通用 Project Interface，并执行 `tools/test.ps1`。
+
+原视频、完整下载元数据和调试截图保存在被 Git 忽略的 `artifacts/` 等本地目录，
+只将正式解法及必要说明纳入版本管理。候选 JSON 通过静态检查后，仍需实机验收。
 
 完整字段、导航配置和动作说明见[人工解法格式](./docs/zh_cn/solution-format.md)。
 

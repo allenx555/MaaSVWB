@@ -122,6 +122,17 @@
                             }
                         }
                     }
+                },
+                {
+                    "name": "spec_castorotte_01",
+                    "label": "学习卡特斯罗特超越者吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_castorotte_01"
+                            }
+                        }
+                    }
                 }
             ]
         },

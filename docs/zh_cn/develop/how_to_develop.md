@@ -51,6 +51,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\setup_gui.ps1
 
 语义解法格式见[人工解法格式](../solution-format.md)。AI 辅助工具见
 [AI 辅助开发说明](./ai-development.md)。
+从录制的解谜视频制作解法，见[视频转解法流程与工具](./video-to-solution.md)。
+新聊天制作一关时，先使用[最小入口与提示词](./video-solution-start.md)。
 
 ## 本地发布
 

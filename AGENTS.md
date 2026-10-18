@@ -38,3 +38,10 @@ Run `tools/test.ps1` after changing Python, catalogs, solutions, pipelines, AI t
 project instructions. Run the Avalonia build after changing `gui/`. Do not claim an
 emulator workflow is verified unless it was actually executed against an authorized live
 device.
+
+## Video-based puzzle authoring
+
+For a puzzle video task, start with `docs/zh_cn/develop/video-solution-start.md`.
+Read only the target case evidence, draft, relevant schema/actions, and one nearby solution;
+expand to the full workflow or older case records only when needed. Keep a short handoff
+in the case evidence file so a new chat can resume without importing previous chat history.

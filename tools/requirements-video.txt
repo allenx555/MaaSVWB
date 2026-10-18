@@ -1,0 +1,4 @@
+# Offline authoring tools only; not product runtime dependencies.
+yt-dlp==2026.8.19
+Pillow>=11,<13
+jsonschema>=4.18,<5

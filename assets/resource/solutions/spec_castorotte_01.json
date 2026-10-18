@@ -1,0 +1,98 @@
+{
+    "id": "spec_castorotte_01",
+    "name": "学习卡特斯罗特超越者吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "学习卡特斯罗特超越者吧！",
+        "name_pattern": ".*学习.*卡特斯罗特超越者.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "卡特斯罗特超越者",
+                "pattern": "卡特斯罗特超越者",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 20
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 2,
+            "label": "使用卡特斯罗特，为手动进化准备",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 8000,
+            "after_ms": 1000,
+            "expand_hand": true,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "evolve",
+            "evolution_type": "normal",
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            },
+            "label": "手动进化卡特斯罗特以获得使后续随从自动进化的纹章",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 8000,
+            "after_ms": 5000
+        },
+        {
+            "action": "play_card",
+            "hand_index": 1,
+            "hand_count": 1,
+            "target": {
+                "type": "enemy_follower",
+                "index": 2,
+                "count": 2
+            },
+            "label": "使用铸铁亲信，破坏右侧守护；等待其自动进化",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 8000,
+            "after_ms": 3500
+        },
+        {
+            "action": "attack",
+            "attacker_index": 1,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            },
+            "label": "左侧卡特斯罗特攻击剩余守护",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 8000,
+            "after_ms": 1500
+        },
+        {
+            "action": "attack",
+            "attacker_index": 1,
+            "ally_count": 1,
+            "target": {
+                "type": "enemy_leader"
+            },
+            "label": "卡特斯罗特与守护交换后，唯一的五攻疾驰随从攻击敌方主战者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 8000,
+            "after_ms": 1500
+        }
+    ]
+}
