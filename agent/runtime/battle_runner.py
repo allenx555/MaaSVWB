@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from battle_engine.deck_tracker import DeckTracker
@@ -28,7 +28,7 @@ from pipeline_nodes import (
 from solution_engine.layout import BoardLayout
 from solution_engine.models import SolutionError
 
-from .backend import MaaBackend
+from .backend import LeaderHealth, MaaBackend
 from .hand_observer import HandObserver, hand_is_expanded
 from .tracker_session import DeckTrackingSession
 
@@ -46,6 +46,15 @@ class BattleOutcome(str, Enum):
 class TurnReady:
     current_energy: int
     maximum_energy: int
+
+
+@dataclass
+class _TurnSession:
+    remaining_actions: int
+    played_counts: dict[str, int] = field(default_factory=dict)
+    evolved: bool = False
+    outcome: BattleOutcome | None = None
+    deferred_hand: bool = False
 
 
 class BattleRunner:
@@ -69,6 +78,12 @@ class BattleRunner:
         self._tracker_session = DeckTrackingSession(self._deck_tracker, catalog, "dungeon")
         self._tracker_observer = HandObserver(backend, self._tracker_session.candidate_catalog())
         self._hand_expanded = False
+        self._turn_followers: list[tuple[str | None, bool]] | None = None
+        self._turn_session: _TurnSession | None = None
+        self._turn_attack_flags: list[bool] | None = None
+        self._last_hand_frame = None
+        self._tracker_signature: tuple | None = None
+        self._has_zero_cost_cards = any(catalog.cards[card_id].base_cost == 0 for card_id in policy.playable_ids)
 
     @staticmethod
     def _validate_play_target(target: Target) -> None:
@@ -100,6 +115,7 @@ class BattleRunner:
     def reset_tracker(self) -> None:
         """Reinitialise the deck tracker at the start of a new battle."""
         self._deck_tracker = self._make_tracker()
+        self._tracker_signature = None
         self._tracker_session = DeckTrackingSession(self._deck_tracker, self.catalog, "dungeon")
         self._tracker_observer = HandObserver(self.backend, self._tracker_session.candidate_catalog())
         self._tracker_session.publish("waiting", "新对局：等待确认起手")
@@ -207,7 +223,9 @@ class BattleRunner:
                 state.current_energy,
                 state.maximum_energy,
             )
-            self._execute_turn()
+            outcome = self._execute_turn()
+            if outcome is not None:
+                return outcome
             if not self._end_turn():
                 raise SolutionError("点击结束回合失败")
             previous_maximum = state.maximum_energy
@@ -282,8 +300,20 @@ class BattleRunner:
             return maximum > previous_maximum and current == maximum
         return current == maximum == 10
 
-    def _execute_turn(self) -> None:
+    def _execute_turn(self) -> BattleOutcome | None:
         self._hand_expanded = False
+        self._turn_followers = None
+        if self.policy.profile.attack.resume_play:
+            return self._execute_interleaved_turn()
+        if self.policy.profile.evolution.enabled and self.policy.profile.evolution.after_play:
+            board = self.backend.observe_board_state()
+            if board is not None:
+                self._turn_followers = [(None, True) for _ in range(board.ally_count)]
+            self._play_cards()
+            self._try_evolve_after_play()
+            self._turn_followers = None
+            self._attack_phase()
+            return
         evolved = False
         if self.policy.profile.evolution.enabled:
             evolved = self._try_evolve_existing_follower()
@@ -293,26 +323,81 @@ class BattleRunner:
             self._try_evolve_played_followers(played_followers)
 
         self._attack_phase()
+        return None
+
+    def _current_outcome(self) -> BattleOutcome | None:
+        if self._turn_session is not None and self._turn_session.outcome is not None:
+            return self._turn_session.outcome
+        frame = self.backend.capture_frame()
+        outcome = self._recognize_outcome(frame) if frame is not None else None
+        if self._turn_session is not None:
+            self._turn_session.outcome = outcome
+        return outcome
+
+    def _execute_interleaved_turn(self) -> BattleOutcome | None:
+        session = _TurnSession(self.policy.profile.safety.max_actions_per_turn)
+        self._turn_session = session
+        board = self.backend.observe_board_state()
+        self._turn_followers = [(None, True) for _ in range(board.ally_count)] if board is not None else []
+        self._turn_attack_flags = [True for _ in self._turn_followers]
+        evolution_checked = False
+        try:
+            if self.policy.profile.evolution.enabled and not self.policy.profile.evolution.after_play:
+                session.evolved = self._try_evolve_existing_follower()
+                if session.evolved:
+                    session.remaining_actions -= 1
+            while session.remaining_actions > 0:
+                if self.backend.is_stopping():
+                    raise SolutionError("战斗已停止")
+                outcome = self._current_outcome()
+                if outcome is not None:
+                    return outcome
+                played = self._play_cards()
+                outcome = self._current_outcome()
+                if outcome is not None:
+                    return outcome
+                if session.remaining_actions <= 0:
+                    break
+                if self.policy.profile.evolution.enabled and not session.evolved and (played or not evolution_checked):
+                    session.evolved = self._try_evolve_after_play()
+                    evolution_checked = True
+                    if session.evolved:
+                        session.remaining_actions -= 1
+                if session.remaining_actions <= 0 or not self._attack_phase(one_action=True):
+                    break
+            outcome = self._current_outcome()
+            if outcome is None and session.deferred_hand and not self.backend.is_stopping():
+                # At zero energy and without registered zero-cost candidates,
+                # defer tracking-only expansion until attacks have finished.
+                self._sync_tracker(self._observe_hand(0))
+            return outcome
+        finally:
+            self._turn_session = None
+            self._turn_attack_flags = None
+            self._turn_followers = None
 
     def _play_cards(self) -> tuple[str, ...]:
-        played_counts: dict[str, int] = {}
+        session = self._turn_session
+        played_counts: dict[str, int] = session.played_counts if session is not None else {}
         played_followers: list[str] = []
         pending_plan: ActionPlan | None = None
         no_progress = 0
         for _ in range(self.policy.profile.safety.max_actions_per_turn):
+            if session is not None and session.remaining_actions <= 0:
+                break
             energy_pair = self.backend.read_energy_points()
             if energy_pair is None:
+                self._tracker_signature = None
                 self._tracker_session.invalidate("能量识别失败，保留上次记牌结果")
                 break
             energy, _maximum = energy_pair
+            if session is not None and energy == 0 and not self._has_zero_cost_cards:
+                session.deferred_hand = True
+                break
             hand = self._observe_hand(energy)
-            # Tracker observations are independent of the policy's permissive OCR.
-            # Verify the complete hand twice, including a genuinely empty hand.
-            for _sample in range(2):
-                self._tracker_session.observe(
-                    self._tracker_observer.observe(self.backend.capture_frame())
-                )
-                time.sleep(0.15)
+            if session is not None:
+                session.deferred_hand = False
+            self._sync_tracker(hand)
             if hand is None:
                 LOGGER.warning("[出牌] 截图失败，跳过本次观测并重试")
                 time.sleep(0.2)
@@ -332,7 +417,12 @@ class BattleRunner:
                 enemy_has_ward=bool(board.enemy_ward_indexes),
                 hand=tuple(item.card for item in hand),
                 played_counts=played_counts,
+                remaining_actions=session.remaining_actions if session is not None else None,
             )
+            if self.policy.needs_health(state):
+                observed_health = self.backend.read_leader_health(hand_expanded=self._hand_expanded)
+                if isinstance(observed_health, LeaderHealth):
+                    state = replace(state, ally_health=observed_health.ally, enemy_health=observed_health.enemy)
             if pending_plan is not None:
                 plan = self.policy.refresh_play_plan(pending_plan, state)
                 if plan is None:
@@ -366,6 +456,8 @@ class BattleRunner:
                 *selected.source, *self.layout.fixed_point("play_area"), 350
             ):
                 raise SolutionError(f"使用卡牌失败: {selected.name}")
+            if session is not None:
+                session.remaining_actions -= 1
             if step.target.type in {"enemy_leader", "ally_leader"}:
                 time.sleep(0.7)
                 if not self.backend.tap(*self.layout.fixed_point(step.target.type)):
@@ -384,6 +476,7 @@ class BattleRunner:
                 self._hand_expanded = False
                 played_counts[step.card_id] = played_counts.get(step.card_id, 0) + 1
                 self._tracker_session.record_played(step.card_id)
+                self._tracker_signature = None
                 definition = self.catalog.cards.get(step.card_id)
                 if definition is not None and definition.type == "follower":
                     played_followers.append(step.card_id)
@@ -395,10 +488,96 @@ class BattleRunner:
                 if no_progress >= self.policy.profile.safety.no_progress_limit:
                     break
             time.sleep(0.6)
+            if changed and self._turn_followers is not None:
+                self._record_follower_positions(step.card_id, board.ally_count)
+            if session is not None and self._current_outcome() is not None:
+                # Settlement is an observed result, not inferred from predicted
+                # lethal damage. The caller propagates the actual outcome.
+                pending_plan = None
+                break
 
         if pending_plan is not None:
             raise SolutionError("组合尚未完成：观测失败或达到安全限制，已停止")
         return tuple(played_followers)
+
+    def _sync_tracker(self, hand: tuple[ObservedHandCard, ...] | None) -> None:
+        if hand is None:
+            self._tracker_signature = None
+            self._tracker_session.invalidate("手牌观测失败，保留上次记牌结果")
+            return
+        frame = self._last_hand_frame
+        if frame is None:
+            frame = self.backend.capture_frame()
+        if frame is None:
+            self._tracker_signature = None
+            return
+        deck_count = self.backend.read_deck_count(frame=frame)
+        deck_count = deck_count if isinstance(deck_count, int) else None
+        hand_signature = (tuple(item.card.card_id for item in hand), deck_count)
+        signature = (*hand_signature, self._tracker_session.sequence)
+        if signature == self._tracker_signature:
+            return
+        # Only cache a hand that the independent strict observer has confirmed
+        # twice. Deck total changes also force a new confirmation, even if card
+        # names/count stay the same. Never use this cache for play decisions.
+        confirmed = False
+        for sample in range(2):
+            if sample:
+                time.sleep(0.15)
+            observed = self._tracker_observer.observe(frame if sample == 0 else self.backend.capture_frame())
+            confirmed = self._tracker_session.observe(observed)
+        strict_signature = (tuple(item.card.card_id for item in observed.cards), observed.deck_count)
+        self._tracker_signature = (*hand_signature, self._tracker_session.sequence) if confirmed and hand_signature == strict_signature else None
+
+    def _record_follower_positions(self, card_id: str, before_count: int) -> None:
+        """Bind identities only when the observed addition matches the card's slot model."""
+        board = self.backend.observe_board_state()
+        if board is None:
+            self._turn_followers = []
+            if self._turn_attack_flags is not None:
+                self._turn_attack_flags = []
+            return
+        known = self._turn_followers or []
+        definition = self.catalog.cards[card_id]
+        added = board.ally_count - before_count
+        if len(known) == before_count:
+            if definition.type == "follower" and 1 <= added <= 1 + definition.effects.summon_count:
+                self._turn_followers = known + [(card_id, False)] + [(None, False)] * (added - 1)
+                if self._turn_attack_flags is not None:
+                    if len(self._turn_attack_flags) == before_count:
+                        self._turn_attack_flags.extend([True] * added)
+                    else:
+                        self._turn_attack_flags = [False] * before_count + [True] * added
+                return
+            if definition.type != "follower" and added == 0:
+                return
+        # Deaths, unexpected summons or uncertain observations invalidate index
+        # identities; do not guess that the last N bodies are the N played cards.
+        self._turn_followers = [(None, False) for _ in range(board.ally_count)]
+        if self._turn_attack_flags is not None:
+            self._turn_attack_flags = [False] * board.ally_count
+
+    def _try_evolve_after_play(self) -> bool:
+        board = self.backend.observe_board_state()
+        if board is None or board.ally_count <= 0:
+            return False
+        known = self._turn_followers or []
+        if len(known) != board.ally_count:
+            known = [(None, False)] * board.ally_count
+        priority = {card_id: index for index, card_id in enumerate(self.policy.profile.evolution.card_priority)}
+
+        def rank(item: tuple[int, tuple[str | None, bool]]) -> tuple[int, int, int]:
+            index, (card_id, existing) = item
+            storm = card_id is not None and "storm" in self.catalog.cards[card_id].traits
+            # Readiness is a preference based on known unconditional storm or a
+            # surviving turn-start body, not a claim to detect freezes/exhaustion.
+            readiness = (0 if storm else 1 if existing else 2) if self.policy.profile.evolution.prefer_can_attack else 0
+            return readiness, priority.get(card_id or "", len(priority)), index
+
+        ordered = sorted(enumerate(known, 1), key=rank)
+        return self._try_evolve_candidates(board.ally_count, tuple(
+            (index, card_id) for index, (card_id, _existing) in ordered
+        ))
 
     def _try_evolve_existing_follower(self) -> bool:
         board = self.backend.observe_board_state()
@@ -414,6 +593,10 @@ class BattleRunner:
     ) -> bool:
         if not played_followers:
             return False
+        if any(self.catalog.cards[card_id].effects.summon_count for card_id in played_followers):
+            # Legacy timing cannot reconstruct identities from played-card count
+            # when any of those cards can add multiple bodies.
+            return self._try_evolve_after_play()
         board = self.backend.observe_board_state()
         if board is None or board.ally_count <= 0:
             return False
@@ -433,7 +616,7 @@ class BattleRunner:
         }
         candidates.sort(
             key=lambda item: (
-                0 if "storm" in self.catalog.cards[item[1]].traits else 1,
+                0 if self.policy.profile.evolution.prefer_can_attack and "storm" in self.catalog.cards[item[1]].traits else 1,
                 priority.get(item[1], len(priority)),
                 item[0],
             )
@@ -468,6 +651,7 @@ class BattleRunner:
         return False
 
     def _observe_hand(self, energy: int) -> tuple[ObservedHandCard, ...] | None:
+        self._last_hand_frame = None
         for attempt in range(2):
             expanded = self._expand_hand_for_observation()
             if expanded is None:
@@ -481,6 +665,7 @@ class BattleRunner:
                 detail.all_results if detail and detail.hit else ()
             )
             if self._hand_texts_are_expanded(texts):
+                self._last_hand_frame = frame
                 observed = parse_hand_texts(texts, self.catalog, energy)
                 LOGGER.info(
                     "[手牌] %s",
@@ -523,36 +708,72 @@ class BattleRunner:
         self._hand_expanded = True
         return True
 
-    def _attack_phase(self) -> None:
+    def _attack_phase(self, *, one_action: bool = False) -> bool:
         board = self.backend.observe_board_state()
         if board is None or board.ally_count <= 0:
-            return
-        remaining_index = board.ally_count
+            return False
+        if self._turn_attack_flags is None:
+            pending = set(range(1, board.ally_count + 1))
+        elif len(self._turn_attack_flags) == board.ally_count:
+            pending = {index for index, ready in enumerate(self._turn_attack_flags, 1) if ready}
+        else:
+            # Losing the index mapping must not allow already-tried bodies to
+            # attack again merely because a new phase started.
+            self._turn_attack_flags = [False] * board.ally_count
+            return False
+        performed = False
+        previous_count = board.ally_count
+        previous_index: int | None = None
         observation_failures = 0
-        # 从右向左尝试，可降低左侧随从死亡后其余序号变化的影响。
-        while remaining_index > 0:
-            board = self.backend.observe_board_state()
+        policy = self.policy.profile.attack
+        while pending:
+            board = self.backend.observe_board_state(
+                include_attacks=policy.attacker_order != "left_to_right",
+                attack_indexes=tuple(sorted(pending)),
+            )
             if board is None:
                 observation_failures += 1
                 if observation_failures > self.policy.profile.safety.max_retries_per_action:
                     LOGGER.warning("[攻击] 连续截图失败，停止当前攻击阶段")
-                    return
+                    return performed
                 time.sleep(0.2)
                 continue
             observation_failures = 0
             if board.ally_count <= 0:
-                return
-
-            # 若刚才的攻击者被反击消灭，当前随从数量会变小；以实时数量
-            # 修正源序号，避免仍按旧布局计算坐标。
-            index = min(remaining_index, board.ally_count)
-            if board.enemy_ward_indexes:
+                return performed
+            if board.ally_count != previous_count:
+                if board.ally_count == previous_count - 1 and previous_index is not None:
+                    pending = {index - int(index > previous_index) for index in pending}
+                else:
+                    LOGGER.warning("[攻击] 随从数量异常变化，停止当前攻击阶段以避免重复操作")
+                    return performed
+            pending = {index for index in pending if index <= board.ally_count}
+            if not pending:
+                return performed
+            attacks = board.ally_attacks
+            if policy.attacker_order == "left_to_right":
+                index = min(pending)
+            elif len(attacks) == board.ally_count and all(attacks[index - 1] is not None for index in pending):
+                direction = -1 if policy.attacker_order == "highest_attack_first" else 1
+                index = min(pending, key=lambda index: (direction * int(attacks[index - 1] or 0), index))
+            else:
+                # Missing/ambiguous digits must not be interpreted as zero attack.
+                index = max(pending)
+                LOGGER.debug("[攻击] 攻击力识别不完整，回退从右向左尝试")
+            if board.enemy_ward_indexes and policy.clear_ward:
                 target = self.layout.indexed_point(
                     "enemy_followers",
                     board.enemy_count,
                     board.enemy_ward_indexes[0],
                 )
                 target_name = f"敌方守护 {board.enemy_ward_indexes[0]}"
+            elif policy.otherwise == "enemy_follower" and board.enemy_count:
+                target = self.layout.indexed_point("enemy_followers", board.enemy_count, 1)
+                target_name = "敌方随从 1"
+            elif board.enemy_ward_indexes:
+                # The profile explicitly declines clearing wards; a leader
+                # attack would be blocked, so keep the follower unspent.
+                return performed
             else:
                 target = self.layout.fixed_point("enemy_leader")
                 target_name = "敌方主战者"
@@ -562,5 +783,33 @@ class BattleRunner:
             LOGGER.info("[攻击] 我方随从 %d -> %s", index, target_name)
             if not self.backend.swipe(*source, *target, 350):
                 raise SolutionError("随从攻击操作失败")
-            remaining_index = index - 1
+            performed = True
+            self._hand_expanded = False
+            if self._turn_session is not None:
+                self._turn_session.remaining_actions -= 1
+            pending.remove(index)
+            previous_index = index
+            previous_count = board.ally_count
             time.sleep(0.8)
+            if one_action:
+                self._update_after_attack(board.ally_count, index, pending)
+                return True
+        return performed
+
+    def _update_after_attack(self, before_count: int, index: int, pending: set[int]) -> None:
+        after = self.backend.observe_board_state()
+        if after is None:
+            self._turn_followers = []
+            self._turn_attack_flags = []
+            return
+        known = self._turn_followers or []
+        flags = [position in pending for position in range(1, before_count + 1)]
+        if len(known) == before_count and after.ally_count in {before_count, before_count - 1}:
+            if after.ally_count < before_count:
+                del known[index - 1]
+                del flags[index - 1]
+            self._turn_followers = known
+            self._turn_attack_flags = flags
+        else:
+            self._turn_followers = [(None, False) for _ in range(after.ally_count)]
+            self._turn_attack_flags = [False] * after.ally_count

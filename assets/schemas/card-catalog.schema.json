@@ -62,7 +62,17 @@
                             "enum": ["storm", "rush", "ward", "generated"]
                         }
                     },
-                    "deck_code_id": { "type": "string", "minLength": 1 }
+                    "deck_code_id": { "type": "string", "minLength": 1 },
+                    "effects": {
+                        "type": "object",
+                        "properties": {
+                            "summon_count": { "type": "integer", "minimum": 0, "maximum": 4 },
+                            "leader_damage": { "type": "integer", "minimum": 0, "maximum": 20 },
+                            "self_damage": { "type": "integer", "minimum": 0, "maximum": 20 },
+                            "damage_lowest_health": { "type": "boolean" }
+                        },
+                        "additionalProperties": false
+                    }
                 },
                 "additionalProperties": false
             }

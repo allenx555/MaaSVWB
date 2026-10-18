@@ -31,6 +31,18 @@
         "threshold": 0.15,
         "order_by": "Horizontal"
     },
+    "识别_基础战斗主战者生命值": {
+        "recognition": "OCR",
+        "roi": [728, 28, 60, 62],
+        "expected": "^[1-9][0-9]?$",
+        "threshold": 0.8
+    },
+    "识别_基础战斗随从攻击力": {
+        "recognition": "OCR",
+        "roi": [250, 405, 780, 80],
+        "expected": "^[0-9]{1,2}$",
+        "threshold": 0.6
+    },
     "识别_基础战斗胜利结算": {
         "recognition": "OCR",
         "roi": [650, 150, 600, 430],

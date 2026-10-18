@@ -66,7 +66,7 @@ class _AttackBackend:
         )
         self._last = ObservedBoardState(2, 0, ())
 
-    def observe_board_state(self) -> ObservedBoardState:
+    def observe_board_state(self, **_kwargs) -> ObservedBoardState:
         self._last = next(self._states, self._last)
         return self._last
 
@@ -170,6 +170,9 @@ class BattleRunnerTests(unittest.TestCase):
         profile = BattleProfileRepository.for_project(PROJECT_ROOT, catalog).load(
             "aggro_nightmare"
         )
+        # These unit tests exercise the legacy timing and individual helpers.
+        # Interleaved complete turns are covered by test_battle_tactics.
+        profile = replace(profile, attack=replace(profile.attack, resume_play=False))
         layout = BoardLayout.load(
             PROJECT_ROOT / "assets" / "resource" / "layouts" / "default.json"
         )
@@ -373,7 +376,7 @@ class BattleRunnerTests(unittest.TestCase):
 
         with patch("runtime.battle_runner.time.sleep"):
             evolved = runner._try_evolve_played_followers(
-                ("10251120", "10051130")
+                ("10251120", "10253120")
             )
 
         self.assertTrue(evolved)
@@ -385,6 +388,9 @@ class BattleRunnerTests(unittest.TestCase):
 
     def test_successful_start_evolution_skips_post_play_evolution(self) -> None:
         runner = self._runner_with_backend(_EvolutionBackend(0, ()))
+        runner.policy = BattlePolicy(replace(runner.policy.profile, evolution=replace(
+            runner.policy.profile.evolution, after_play=False,
+        )), runner.catalog)
 
         with (
             patch.object(
@@ -405,6 +411,9 @@ class BattleRunnerTests(unittest.TestCase):
 
     def test_failed_start_evolution_retries_after_playing_followers(self) -> None:
         runner = self._runner_with_backend(_EvolutionBackend(0, ()))
+        runner.policy = BattlePolicy(replace(runner.policy.profile, evolution=replace(
+            runner.policy.profile.evolution, after_play=False,
+        )), runner.catalog)
 
         with (
             patch.object(
@@ -448,6 +457,96 @@ class BattleRunnerTests(unittest.TestCase):
                 (550, 465, *enemy_leader, 350),
             ],
         )
+
+    def test_after_play_evolution_waits_for_play_and_precedes_attacks(self) -> None:
+        runner = self._runner_with_backend(_EvolutionBackend(0, ()))
+        calls: list[str] = []
+        with (
+            patch.object(runner, "_play_cards", side_effect=lambda: calls.append("play")),
+            patch.object(runner, "_try_evolve_after_play", side_effect=lambda: calls.append("evolve")),
+            patch.object(runner, "_try_evolve_existing_follower") as before,
+            patch.object(runner, "_attack_phase", side_effect=lambda: calls.append("attack")),
+        ):
+            runner._execute_turn()
+        self.assertEqual(calls, ["play", "evolve", "attack"])
+        before.assert_not_called()
+
+    def test_summons_do_not_shift_the_known_storm_identity_to_a_token(self) -> None:
+        backend = _EvolutionBackend(ally_count=4, recognition_results=(True,))
+        runner = self._runner_with_backend(backend)
+        runner._turn_followers = [("10253120", False)]
+        runner._record_follower_positions("10851130", before_count=1)
+        self.assertEqual(runner._turn_followers, [
+            ("10253120", False), ("10851130", False), (None, False), (None, False),
+        ])
+        with patch("runtime.battle_runner.time.sleep"):
+            self.assertTrue(runner._try_evolve_after_play())
+        self.assertEqual(backend.taps, [(400, 465)])
+
+    def test_existing_body_is_preferred_over_new_conditional_storm(self) -> None:
+        backend = _EvolutionBackend(ally_count=2, recognition_results=(True,))
+        runner = self._runner_with_backend(backend)
+        runner._turn_followers = [(None, True), ("10051130", False)]
+        with patch("runtime.battle_runner.time.sleep"):
+            runner._try_evolve_after_play()
+        self.assertEqual(backend.taps, [(550, 465)])
+
+    def test_known_storm_can_receive_evolution_before_existing_body(self) -> None:
+        backend = _EvolutionBackend(ally_count=2, recognition_results=(True,))
+        runner = self._runner_with_backend(backend)
+        runner._turn_followers = [(None, True), ("10253120", False)]
+        with patch("runtime.battle_runner.time.sleep"):
+            runner._try_evolve_after_play()
+        self.assertEqual(backend.taps, [(730, 465)])
+
+    def test_uncertain_body_changes_invalidate_evolution_identity(self) -> None:
+        backend = _EvolutionBackend(ally_count=2, recognition_results=(True,))
+        runner = self._runner_with_backend(backend)
+        runner._turn_followers = [("10253120", False), (None, True)]
+        runner._record_follower_positions("10253120", before_count=2)
+        self.assertEqual(runner._turn_followers, [(None, False), (None, False)])
+
+    def test_attack_order_uses_stats_and_reindexes_after_middle_attacker_dies(self) -> None:
+        backend = MagicMock(spec=MaaBackend)
+        backend.swipe.return_value = True
+        backend.observe_board_state.side_effect = [
+            ObservedBoardState(3, 1, (1,)),
+            ObservedBoardState(3, 1, (1,), (5, 1, 3)),
+            ObservedBoardState(2, 0, (), (5, 3)),
+            ObservedBoardState(2, 0, (), (5, 3)),
+        ]
+        runner = self._runner_with_backend(backend)
+        with patch("runtime.battle_runner.time.sleep"):
+            runner._attack_phase()
+        self.assertEqual([call.args[:2] for call in backend.swipe.call_args_list], [
+            (640, 465), (730, 465), (550, 465),
+        ])
+        self.assertEqual(backend.swipe.call_args_list[0].args[2:4], (640, 265))
+        self.assertEqual(backend.swipe.call_args_list[1].args[2:4], (640, 70))
+
+    def test_attack_configuration_selects_highest_or_leftmost_and_otherwise_target(self) -> None:
+        for order, first_x in (("highest_attack_first", 820), ("left_to_right", 460)):
+            with self.subTest(order=order):
+                backend = MagicMock(spec=MaaBackend)
+                backend.swipe.return_value = True
+                backend.observe_board_state.return_value = ObservedBoardState(3, 1, (), (1, 2, 5))
+                runner = self._runner_with_backend(backend)
+                runner.policy = BattlePolicy(replace(runner.policy.profile, attack=replace(
+                    runner.policy.profile.attack, attacker_order=order, otherwise="enemy_follower",
+                )), runner.catalog)
+                with patch("runtime.battle_runner.time.sleep"):
+                    runner._attack_phase()
+                self.assertEqual(backend.swipe.call_args_list[0].args, (first_x, 465, 640, 265, 350))
+
+    def test_declining_ward_clear_does_not_waste_attacks_on_blocked_leader(self) -> None:
+        backend = MagicMock(spec=MaaBackend)
+        backend.observe_board_state.return_value = ObservedBoardState(2, 1, (1,))
+        runner = self._runner_with_backend(backend)
+        runner.policy = BattlePolicy(replace(runner.policy.profile, attack=replace(
+            runner.policy.profile.attack, clear_ward=False,
+        )), runner.catalog)
+        runner._attack_phase()
+        backend.swipe.assert_not_called()
 
 
 if __name__ == "__main__":

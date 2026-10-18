@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -16,8 +17,11 @@ from battle_engine.models import (  # noqa: E402
     BattleProfile,
     BattleProfileError,
     BattleState,
+    CardRule,
     CardCatalog,
+    CardEffects,
     ObservedCard,
+    PlayCondition,
 )
 from battle_engine.policy import BattlePolicy  # noqa: E402
 from battle_engine.repository import BattleProfileRepository  # noqa: E402
@@ -337,6 +341,146 @@ class BattleProfileTests(unittest.TestCase):
                     ObservedCard("leader_burn", 1, True),
                 ),
             )
+
+    def test_play_mode_is_validated_by_parser_and_schema(self) -> None:
+        schema = json.loads((PROJECT_ROOT / "assets/schemas/battle-profile.schema.json").read_text(encoding="utf-8"))
+        for mode in ("priority", "maximize_energy"):
+            data = profile_data()
+            data["play_mode"] = mode
+            Draft202012Validator(schema).validate(data)
+            self.assertEqual(self.load_profile(data).play_mode, mode)
+        data = profile_data()
+        data["play_mode"] = "invalid"
+        self.assertFalse(Draft202012Validator(schema).is_valid(data))
+        with self.assertRaisesRegex(BattleProfileError, "play_mode"):
+            BattleProfile.from_dict(data)
+
+    def test_energy_planning_respects_dynamic_costs_and_duplicate_usage_limits(self) -> None:
+        data = profile_data()
+        data["play_mode"] = "maximize_energy"
+        data["combos"] = []
+        profile = self.load_profile(data)
+        state = BattleState(5, 5, False, (
+            ObservedCard("leader_burn", 1, True, observed_cost=2),
+            ObservedCard("leader_burn", 2, True, observed_cost=3),
+            ObservedCard("basic_follower", 3, False),
+        ), played_counts={"leader_burn": 1})
+        plan = BattlePolicy(profile, self.catalog).choose_play_plan(state)
+        assert plan is not None
+        self.assertEqual(plan.steps[0].hand_index, 2)
+
+    def test_energy_planning_respects_conditions_in_play_order(self) -> None:
+        profile = replace(self.load_profile(profile_data()), play_mode="maximize_energy", combos=())
+        profile = replace(profile, cards={
+            "basic_follower": CardRule(play_priority=100),
+            "setup_spell": CardRule(play_priority=0, when=PlayCondition(minimum_energy=2)),
+        })
+        state = BattleState(2, 1, False, (
+            ObservedCard("basic_follower", 1, True),
+            ObservedCard("setup_spell", 2, True),
+        ))
+        plan = BattlePolicy(profile, self.catalog).choose_play_plan(state)
+        assert plan is not None
+        self.assertEqual(plan.steps[0].card_id, "setup_spell")
+
+    def test_energy_planning_handles_zero_cost_cards_and_disabled_rules(self) -> None:
+        profile = replace(self.load_profile(profile_data()), play_mode="maximize_energy", combos=())
+        profile = replace(profile, cards={
+            **profile.cards,
+            "leader_burn": CardRule(enabled=False, play_priority=1000),
+        })
+        state = BattleState(0, 1, False, (
+            ObservedCard("leader_burn", 1, True, observed_cost=0),
+            ObservedCard("basic_follower", 2, True, observed_cost=0),
+        ))
+        plan = BattlePolicy(profile, self.catalog).choose_play_plan(state)
+        assert plan is not None
+        self.assertEqual(plan.steps[0].card_id, "basic_follower")
+        self.assertIsNone(BattlePolicy(profile, self.catalog).choose_play_plan(replace(state, board_slots=0)))
+
+    def test_energy_planning_retains_explicit_combo_priority(self) -> None:
+        profile = replace(self.load_profile(profile_data()), play_mode="maximize_energy")
+        state = BattleState(3, 1, False, (
+            ObservedCard("leader_burn", 1, True),
+            ObservedCard("setup_spell", 2, True),
+            ObservedCard("basic_follower", 3, True),
+        ))
+        plan = BattlePolicy(profile, self.catalog).choose_play_plan(state)
+        assert plan is not None
+        self.assertEqual(plan.reason, "combo:setup_then_burn")
+
+    def set_effects(self, card_id: str, **effects) -> None:
+        definition = replace(self.catalog.cards[card_id], effects=CardEffects(**effects))
+        self.catalog = replace(self.catalog, cards={**self.catalog.cards, card_id: definition})
+
+    def test_card_effects_are_catalog_data_and_profile_cannot_override_them(self) -> None:
+        catalog = catalog_data()
+        catalog["cards"][0]["effects"] = {"summon_count": 2}
+        schema = json.loads((PROJECT_ROOT / "assets/schemas/card-catalog.schema.json").read_text(encoding="utf-8"))
+        Draft202012Validator(schema).validate(catalog)
+        self.assertEqual(CardCatalog.from_dict(catalog).cards["basic_follower"].effects.summon_count, 2)
+        for invalid in (-1, 5, True):
+            catalog["cards"][0]["effects"]["summon_count"] = invalid
+            self.assertFalse(Draft202012Validator(schema).is_valid(catalog))
+            with self.assertRaises(BattleProfileError):
+                CardCatalog.from_dict(catalog)
+        data = profile_data()
+        data["cards"]["basic_follower"]["summon_count"] = 2
+        with self.assertRaisesRegex(BattleProfileError, "未知字段"):
+            self.load_profile(data)
+        data = profile_data()
+        data["strategy"] = "aggro_nightmare"
+        self.assertEqual(self.load_profile(data).strategy, "aggro_nightmare")
+        data["strategy"] = "unknown"
+        with self.assertRaises(BattleProfileError):
+            self.load_profile(data)
+
+    def test_combo_reserves_slots_for_extra_summons_before_starting(self) -> None:
+        data = profile_data()
+        self.set_effects("basic_follower", summon_count=1)
+        data["combos"] = [{"id": "two_followers", "priority": 1000, "steps": [
+            {"card_id": "basic_follower"}, {"card_id": "basic_follower"},
+        ]}]
+        profile = self.load_profile(data)
+        state = BattleState(2, 2, False, (
+            ObservedCard("basic_follower", 1, True), ObservedCard("basic_follower", 2, True),
+        ))
+        plan = BattlePolicy(profile, self.catalog).choose_play_plan(state)
+        assert plan is not None
+        self.assertTrue(plan.reason.startswith("card:"))
+
+    def test_damage_fields_validate_in_catalog_schema_and_runtime(self) -> None:
+        data = catalog_data()
+        data["cards"][2]["effects"] = {"leader_damage": 3, "self_damage": 2, "damage_lowest_health": True}
+        schema = json.loads((PROJECT_ROOT / "assets/schemas/card-catalog.schema.json").read_text(encoding="utf-8"))
+        Draft202012Validator(schema).validate(data)
+        self.assertEqual(CardCatalog.from_dict(data).cards["leader_burn"].effects.leader_damage, 3)
+        for invalid in (-1, 21, True):
+            data["cards"][2]["effects"]["leader_damage"] = invalid
+            self.assertFalse(Draft202012Validator(schema).is_valid(data))
+            with self.assertRaises(BattleProfileError):
+                CardCatalog.from_dict(data)
+
+    def test_combo_does_not_start_when_cumulative_self_damage_is_fatal(self) -> None:
+        data = profile_data()
+        self.set_effects("leader_burn", leader_damage=1, self_damage=2)
+        data["combos"][0]["steps"] = [{"card_id": "leader_burn"}, {"card_id": "leader_burn"}]
+        profile = self.load_profile(data)
+        state = BattleState(4, 5, False, (
+            ObservedCard("leader_burn", 1, True), ObservedCard("leader_burn", 2, True),
+        ), ally_health=4, enemy_health=20)
+        plan = BattlePolicy(profile, self.catalog).choose_play_plan(state)
+        assert plan is not None
+        self.assertTrue(plan.reason.startswith("card:"))
+
+    def test_lethal_does_not_assume_leader_target_when_effective_target_is_ally(self) -> None:
+        data = profile_data()
+        self.set_effects("leader_burn", leader_damage=20)
+        profile = self.load_profile(data)
+        rule = replace(profile.cards["leader_burn"], target=replace(self.catalog.cards["leader_burn"].default_target, type="ally_leader"))
+        profile = replace(profile, cards={**profile.cards, "leader_burn": rule})
+        state = BattleState(2, 5, False, (ObservedCard("leader_burn", 1, True),), ally_health=20, enemy_health=3)
+        self.assertIsNone(BattlePolicy(profile, self.catalog).choose_lethal_plan(state))
 
 
 if __name__ == "__main__":

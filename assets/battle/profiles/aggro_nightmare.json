@@ -3,7 +3,9 @@
   "schema_version": 1,
   "id": "aggro_nightmare",
   "name": "无限制快攻梦魇",
-  "description": "地城快梦规则：起手有一费则全留，否则全换；自动普通进化并优先疾驰随从。",
+  "description": "地城快梦规则：起手有一费则全留，否则全换；整手规划尽量用满费用，同等费用按卡牌优先级出牌；自动普通进化并优先疾驰随从。",
+  "strategy": "aggro_nightmare",
+  "play_mode": "maximize_energy",
   "deck": [
     { "card_id": "10501110", "copies": 3 }, { "card_id": "10251120", "copies": 3 },
     { "card_id": "10851120", "copies": 3 }, { "card_id": "10601110", "copies": 3 },
@@ -34,11 +36,12 @@
     "90051120": { "play_priority": 610, "target": { "type": "none" }, "max_uses_per_turn": 5 }
   },
   "combos": [],
-  "attack": { "clear_ward": true, "otherwise": "enemy_leader", "attacker_order": "lowest_attack_first" },
+  "attack": { "clear_ward": true, "otherwise": "enemy_leader", "attacker_order": "lowest_attack_first", "resume_play": true },
   "evolution": {
     "enabled": true,
     "prefer_can_attack": true,
-    "card_priority": ["90051130", "10051130", "10253120"],
+    "after_play": true,
+    "card_priority": ["90051130", "10253120"],
     "type_order": ["normal"]
   },
   "mulligan": {

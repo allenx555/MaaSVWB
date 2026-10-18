@@ -12,12 +12,18 @@ import numpy as np
 from maa.context import Context
 from maa.pipeline import JWaitFreezes
 
-from pipeline_nodes import CURRENT_ENERGY, CURRENT_HAND_COUNT
+from pipeline_nodes import BATTLE_FOLLOWER_ATTACK, BATTLE_LEADER_HEALTH, CURRENT_ENERGY, CURRENT_HAND_COUNT
 from solution_engine.layout import BoardLayout
 
 
 LOGGER = logging.getLogger("maasvwb.solution")
 _FRAME_UNSET = object()
+
+
+@dataclass(frozen=True)
+class LeaderHealth:
+    ally: int
+    enemy: int
 
 
 @dataclass(frozen=True)
@@ -27,6 +33,7 @@ class ObservedBoardState:
     ally_count: int
     enemy_count: int
     enemy_ward_indexes: tuple[int, ...]
+    ally_attacks: tuple[int | None, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -119,6 +126,34 @@ class MaaBackend:
         LOGGER.info("实时能量点: %d/%d（OCR=%r）", current, maximum, text)
         return current, maximum
 
+    def read_leader_health(self, *, hand_expanded: bool = False) -> LeaderHealth | None:
+        """Require two complete, identical observations; never reuse old HP after actions."""
+        samples: list[LeaderHealth] = []
+        regions = (
+            "ally_leader_health_expanded" if hand_expanded else "ally_leader_health",
+            "enemy_leader_health",
+        )
+        for sample in range(2):
+            if sample:
+                time.sleep(0.15)
+            frame = self.capture_frame()
+            if frame is None:
+                return None
+            values: list[int] = []
+            for region in regions:
+                detail = self.recognize(BATTLE_LEADER_HEALTH, {
+                    BATTLE_LEADER_HEALTH: {"roi": list(self.layout.region(region))},
+                }, frame=frame)
+                results = detail.all_results if detail and detail.hit else ()
+                if len(results) != 1:
+                    return None
+                text = str(getattr(results[0], "text", "")).strip()
+                if re.fullmatch(r"[1-9][0-9]?", text) is None:
+                    return None
+                values.append(int(text))
+            samples.append(LeaderHealth(*values))
+        return samples[0] if samples[0] == samples[1] else None
+
     @staticmethod
     def _parse_energy_text(text: str) -> tuple[int, int] | None:
         normalized = text.translate(str.maketrans({"I": "1", "l": "1", "|": "/"}))
@@ -147,6 +182,10 @@ class MaaBackend:
 
     def read_follower_count(self, side: str, *, frame=None) -> int | None:
         """根据随从左下角蓝色攻击力数字，读取当前一侧的随从数量。"""
+        peaks = self._follower_stat_peaks(side, frame=frame)
+        return len(peaks) if peaks is not None else None
+
+    def _follower_stat_peaks(self, side: str, *, frame=None) -> tuple[int, ...] | None:
         regions = {
             "enemy": "enemy_follower_stats",
             "ally": "ally_follower_stats",
@@ -186,14 +225,42 @@ class MaaBackend:
                 "未识别到%s场上随从攻击力数字",
                 "敌方" if side == "enemy" else "我方",
             )
-            return 0
+            return ()
         LOGGER.info(
             "实时%s随从数量: %d（攻击力数字 x=%s）",
             "敌方" if side == "enemy" else "我方",
             len(peaks),
             peaks,
         )
-        return len(peaks)
+        return tuple(peaks)
+
+    def read_follower_attacks(self, ally_count: int, *, frame=None, indexes: tuple[int, ...] | None = None) -> tuple[int | None, ...]:
+        """Read attack digits at the detected blue stat anchors, never defense digits."""
+        if ally_count == 0:
+            return ()
+        frame = self.capture_frame() if frame is None else frame
+        if frame is None:
+            return ()
+        peaks = self._follower_stat_peaks("ally", frame=frame)
+        if peaks is None or len(peaks) != ally_count:
+            return ()
+        _, y, _, height = self.layout.region("ally_follower_stats")
+        attacks: list[int | None] = []
+        for index, x in enumerate(peaks, 1):
+            if indexes is not None and index not in indexes:
+                attacks.append(None)
+                continue
+            left, right = max(0, x - 25), min(frame.shape[1], x + 26)
+            detail = self.recognize(BATTLE_FOLLOWER_ATTACK, {
+                BATTLE_FOLLOWER_ATTACK: {"roi": [left, y, right - left, height]},
+            }, frame=frame)
+            values = [
+                str(getattr(result, "text", "")).strip()
+                for result in (detail.all_results if detail and detail.hit else ())
+            ]
+            value = int(values[0]) if len(values) == 1 and re.fullmatch(r"[0-9]{1,2}", values[0]) else None
+            attacks.append(value)
+        return tuple(attacks)
 
     def read_ward_indexes(
         self,
@@ -235,7 +302,7 @@ class MaaBackend:
             LOGGER.info("检测到敌方守护随从序号: %s", wards)
         return tuple(wards)
 
-    def observe_board_state(self) -> ObservedBoardState | None:
+    def observe_board_state(self, *, include_attacks: bool = False, attack_indexes: tuple[int, ...] | None = None) -> ObservedBoardState | None:
         """用一张截图同步读取双方随从数量和敌方守护状态。"""
         frame = self.capture_frame()
         if frame is None or frame.ndim < 3:
@@ -244,10 +311,14 @@ class MaaBackend:
         enemy_count = self.read_follower_count("enemy", frame=frame)
         if ally_count is None or enemy_count is None:
             return None
+        attacks: tuple[int | None, ...] = ()
+        if include_attacks:
+            attacks = self.read_follower_attacks(ally_count, frame=frame, indexes=attack_indexes) if attack_indexes is not None else self.read_follower_attacks(ally_count, frame=frame)
         return ObservedBoardState(
             ally_count=ally_count,
             enemy_count=enemy_count,
             enemy_ward_indexes=self.read_ward_indexes(enemy_count, frame=frame),
+            ally_attacks=attacks,
         )
 
     def hand_is_expanded(

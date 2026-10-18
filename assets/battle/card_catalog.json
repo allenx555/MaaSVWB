@@ -92,9 +92,7 @@
       "allowed_targets": [
         "none"
       ],
-      "traits": [
-        "storm"
-      ]
+      "traits": []
     },
     {
       "id": "10651110",
@@ -113,6 +111,7 @@
     },
     {
       "id": "10851130",
+      "effects": {"summon_count": 2},
       "deck_code_id": "fPCw",
       "name": "兔耳恶魔·莉蜜儿",
       "type": "follower",
@@ -128,6 +127,7 @@
     },
     {
       "id": "10951110",
+      "effects": {"leader_damage": 2, "self_damage": 2},
       "deck_code_id": "fnd6",
       "name": "强袭的特攻队长",
       "type": "follower",
@@ -143,6 +143,7 @@
     },
     {
       "id": "10153310",
+      "effects": {"leader_damage": 3, "self_damage": 2},
       "deck_code_id": "ckrU",
       "name": "蛇神之怒",
       "type": "spell",
@@ -159,6 +160,7 @@
     },
     {
       "id": "10552310",
+      "effects": {"leader_damage": 3, "damage_lowest_health": true},
       "deck_code_id": "eGFs",
       "name": "残虐的炸裂",
       "aliases": [
@@ -177,6 +179,7 @@
     },
     {
       "id": "10151110",
+      "effects": {"summon_count": 1},
       "deck_code_id": "ckJ6",
       "name": "午夜眷属·埃拉尔",
       "type": "follower",
@@ -207,6 +210,7 @@
     },
     {
       "id": "10253120",
+      "effects": {"self_damage": 2},
       "deck_code_id": "d7D0",
       "name": "夜曲将军·艾瑟拉",
       "type": "follower",

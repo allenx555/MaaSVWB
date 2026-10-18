@@ -96,6 +96,26 @@ class Target:
 
 
 @dataclass(frozen=True)
+class CardEffects:
+    """Known card mechanics; independent of a deck's play preferences."""
+
+    summon_count: int = 0
+    leader_damage: int = 0
+    self_damage: int = 0
+    damage_lowest_health: bool = False
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any], label: str) -> "CardEffects":
+        _reject_unknown(data, {"summon_count", "leader_damage", "self_damage", "damage_lowest_health"}, label)
+        return cls(
+            summon_count=_require_int(data.get("summon_count", 0), f"{label}.summon_count", 0, 4),
+            leader_damage=_require_int(data.get("leader_damage", 0), f"{label}.leader_damage", 0, 20),
+            self_damage=_require_int(data.get("self_damage", 0), f"{label}.self_damage", 0, 20),
+            damage_lowest_health=_optional_bool(data, "damage_lowest_health", False, label),
+        )
+
+
+@dataclass(frozen=True)
 class CardDefinition:
     id: str
     name: str
@@ -107,6 +127,7 @@ class CardDefinition:
     traits: frozenset[str]
     aliases: tuple[str, ...] = ()
     deck_code_id: str | None = None
+    effects: CardEffects = field(default_factory=CardEffects)
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], label: str) -> "CardDefinition":
@@ -123,6 +144,7 @@ class CardDefinition:
                 "traits",
                 "aliases",
                 "deck_code_id",
+                "effects",
             },
             label,
         )
@@ -181,6 +203,7 @@ class CardDefinition:
             traits=traits,
             aliases=aliases,
             deck_code_id=deck_code_id,
+            effects=CardEffects.from_dict(_as_object(data.get("effects", {}), f"{label}.effects"), f"{label}.effects"),
         )
 
 
@@ -331,11 +354,12 @@ class AttackPolicy:
     clear_ward: bool = True
     otherwise: str = "enemy_leader"
     attacker_order: str = "lowest_attack_first"
+    resume_play: bool = False
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "AttackPolicy":
         label = "attack"
-        _reject_unknown(data, {"clear_ward", "otherwise", "attacker_order"}, label)
+        _reject_unknown(data, {"clear_ward", "otherwise", "attacker_order", "resume_play"}, label)
         otherwise = _require_string(data.get("otherwise", "enemy_leader"), "attack.otherwise")
         if otherwise not in {"enemy_leader", "enemy_follower"}:
             raise BattleProfileError(f"attack.otherwise 不受支持: {otherwise}")
@@ -355,6 +379,7 @@ class AttackPolicy:
             clear_ward=_optional_bool(data, "clear_ward", True, label),
             otherwise=otherwise,
             attacker_order=attacker_order,
+            resume_play=_optional_bool(data, "resume_play", False, label),
         )
 
 
@@ -364,12 +389,13 @@ class EvolutionPolicy:
     prefer_can_attack: bool = True
     card_priority: tuple[str, ...] = ()
     type_order: tuple[str, ...] = ("super", "normal")
+    after_play: bool = False
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "EvolutionPolicy":
         label = "evolution"
         _reject_unknown(
-            data, {"enabled", "prefer_can_attack", "card_priority", "type_order"}, label
+            data, {"enabled", "prefer_can_attack", "card_priority", "type_order", "after_play"}, label
         )
         card_priority = tuple(
             _require_id(item, "evolution.card_priority[]")
@@ -392,6 +418,7 @@ class EvolutionPolicy:
             prefer_can_attack=_optional_bool(data, "prefer_can_attack", True, label),
             card_priority=card_priority,
             type_order=type_order,
+            after_play=_optional_bool(data, "after_play", False, label),
         )
 
 
@@ -468,6 +495,8 @@ class BattleProfile:
     mulligan: MulliganPolicy
     safety: SafetyPolicy
     schema_version: int = 1
+    play_mode: str = "priority"
+    strategy: str = "generic"
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "BattleProfile":
@@ -486,6 +515,8 @@ class BattleProfile:
                 "evolution",
                 "mulligan",
                 "safety",
+                "play_mode",
+                "strategy",
             },
             "battle_profile",
         )
@@ -527,6 +558,12 @@ class BattleProfile:
         description = data.get("description", "")
         if not isinstance(description, str):
             raise BattleProfileError("description 必须是字符串")
+        play_mode = _require_string(data.get("play_mode", "priority"), "play_mode")
+        if play_mode not in {"priority", "maximize_energy"}:
+            raise BattleProfileError(f"play_mode 不受支持: {play_mode}")
+        strategy = _require_string(data.get("strategy", "generic"), "strategy")
+        if strategy not in {"generic", "aggro_nightmare"}:
+            raise BattleProfileError(f"strategy 不受支持: {strategy}")
         return cls(
             id=_require_id(data.get("id"), "id"),
             name=_require_string(data.get("name"), "name"),
@@ -547,6 +584,8 @@ class BattleProfile:
                 _as_object(data.get("safety", {}), "safety")
             ),
             schema_version=version,
+            play_mode=play_mode,
+            strategy=strategy,
         )
 
 
@@ -573,6 +612,9 @@ class BattleState:
     enemy_has_ward: bool
     hand: tuple[ObservedCard, ...]
     played_counts: Mapping[str, int] = field(default_factory=dict)
+    ally_health: int | None = None
+    enemy_health: int | None = None
+    remaining_actions: int | None = None
 
     def __post_init__(self) -> None:
         if not 0 <= self.energy <= 20:
@@ -584,6 +626,11 @@ class BattleState:
             raise ValueError("hand 不能包含重复 hand_index")
         if any(count < 0 for count in self.played_counts.values()):
             raise ValueError("played_counts 不能包含负数")
+        for value in (self.ally_health, self.enemy_health):
+            if value is not None and not 1 <= value <= 99:
+                raise ValueError("已知主战者生命值必须在 1 到 99 之间")
+        if self.remaining_actions is not None and not 0 <= self.remaining_actions <= 100:
+            raise ValueError("remaining_actions 必须在 0 到 100 之间")
 
 
 @dataclass(frozen=True)

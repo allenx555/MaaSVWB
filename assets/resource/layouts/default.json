@@ -26,7 +26,10 @@
         "mulligan_selection": [150, 100, 800, 540],
         "battle_board": [300, 140, 680, 420],
         "enemy_follower_stats": [250, 245, 780, 65],
-        "ally_follower_stats": [250, 405, 780, 80]
+        "ally_follower_stats": [250, 405, 780, 80],
+        "enemy_leader_health": [728, 28, 60, 62],
+        "ally_leader_health": [744, 545, 66, 62],
+        "ally_leader_health_expanded": [748, 500, 66, 55]
     },
     "indexed": {
         "hand": {
