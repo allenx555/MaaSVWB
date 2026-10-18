@@ -20,7 +20,15 @@ def main() -> int:
     args = parse_args()
     mode = (root / "mode.txt").read_text(encoding="utf-8")
     data = vars(args).copy()
-    data.update(pid=os.getpid(), cwd=str(root), project_root=os.environ.get("MAASVWB_ROOT"))
+    project_root = os.environ.get("MAASVWB_ROOT")
+    data.update(
+        pid=os.getpid(),
+        cwd=str(root),
+        project_root=project_root,
+        # macOS can expose the same temporary directory through /var and
+        # /private/var. Verify filesystem identity, not the spelling of getcwd().
+        cwd_matches_project_root=project_root is not None and root.samefile(project_root),
+    )
     (root / "arguments.json").write_text(json.dumps(data, default=str), encoding="utf-8")
     if mode in {"ignore-stop", "cancel", "dispose"}:
         # The parent must also clean up descendants when forcing termination.

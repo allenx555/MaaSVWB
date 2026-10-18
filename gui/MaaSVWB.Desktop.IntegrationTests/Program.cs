@@ -73,7 +73,8 @@ internal static class Program
         Check(root.GetProperty("deck_code").GetString() == "牌组分享 2.5.test.test", "Deck code was split");
         foreach (var flag in new[] { "execute", "skip_completed", "save_draw" })
             Check(root.GetProperty(flag).GetBoolean(), $"Missing {flag}");
-        Check(root.GetProperty("cwd").GetString() == fixture.Root, "Wrong working directory");
+        Check(root.GetProperty("cwd_matches_project_root").GetBoolean(),
+            $"Wrong working directory: actual={root.GetProperty("cwd").GetString()}, expected={fixture.Root}");
         Check(root.GetProperty("project_root").GetString() == fixture.Root, "Wrong MAASVWB_ROOT");
         var snapshot = fixture.Snapshots.Single();
         Check(snapshot.Total == 3 && snapshot.Entries.Single() == new TrackerEntry("测试卡牌", 3), "Deck event mismatch");
