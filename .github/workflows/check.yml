@@ -75,9 +75,15 @@ jobs:
           npx @nekosu/maa-tools check
 
       - name: Install Python dependencies
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
+          python -m venv .venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/Scripts/python.exe -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Join-Path $env:GITHUB_WORKSPACE ".venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Run Python tests and content validation
         run: |
@@ -89,7 +95,7 @@ jobs:
           python -m compileall -q agent tools tests
 
       - name: Run Python static type check
-        run: npx pyright --pythonpath python
+        run: npx pyright --pythonpath .venv/Scripts/python.exe
 
       - name: Validate JSON Schema
         run: |
