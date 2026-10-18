@@ -14,7 +14,7 @@ _DECK_CODE_RE = re.compile(r"\d+\.\d+(?:\.[A-Za-z0-9_-]+)+")
 class DeckTracker:
     """Tracks own-deck cards remaining during a battle.
 
-    remaining = initial_copies - cards_in_hand_now - cards_removed_from_hand
+    Mutable deck ledger; unknown slots preserve the observed deck size.
 
     换牌不计入：记牌器只在正式回合出牌时被更新，换回牌库的
     起手牌会随第一次手牌快照自然扣除，不需要单独记录。
@@ -27,6 +27,38 @@ class DeckTracker:
     initial_counts: dict[str, int]
     played_total: dict[str, int] = field(default_factory=dict)
     hand_snapshot: dict[str, int] = field(default_factory=dict)
+    deck_counts: dict[str, int] = field(init=False)
+    unknown_count: int = 0
+    observed_total: int | None = None
+
+    def __post_init__(self) -> None:
+        self.deck_counts = dict(self.initial_counts)
+
+    def reconcile_total(self, total: int) -> None:
+        """Reconcile a stable OCR total without inventing card identities.
+
+        An unexplained loss could be any named card. Reduce each named lower
+        bound by that loss and retain the rest as unknown composition.
+        """
+        if total < 0:
+            raise ValueError("牌库数量不能为负数")
+        deficit = self.total_remaining - total
+        if deficit > 0:
+            self.deck_counts = {cid: max(0, n - deficit)
+                                for cid, n in self.deck_counts.items()}
+        self.unknown_count = total - sum(self.deck_counts.values())
+        self.observed_total = total
+
+    def record_returned(self, card_id: str, *, source: str = "other", count: int = 1) -> None:
+        """Apply a confirmed return, not a guess from hand disappearance."""
+        if source not in {"hand", "other"} or count <= 0:
+            raise ValueError("无效的洗回事件")
+        if source == "hand":
+            if self.hand_snapshot.get(card_id, 0) < count:
+                raise ValueError("洗回数量超过已知手牌")
+            self.hand_snapshot[card_id] -= count
+        self.deck_counts[card_id] = self.deck_counts.get(card_id, 0) + count
+        self.observed_total = None
 
     @classmethod
     def from_profile(cls, profile: BattleProfile) -> DeckTracker:
@@ -64,6 +96,9 @@ class DeckTracker:
         snapshot: dict[str, int] = {}
         for card in hand:
             snapshot[card.card_id] = snapshot.get(card.card_id, 0) + 1
+        for card_id, count in snapshot.items():
+            drawn = max(0, count - self.hand_snapshot.get(card_id, 0))
+            self.deck_counts[card_id] = max(0, self.deck_counts.get(card_id, 0) - drawn)
         for card_id, old_count in self.hand_snapshot.items():
             disappeared = max(0, old_count - snapshot.get(card_id, 0))
             self.played_total[card_id] = self.played_total.get(card_id, 0) + disappeared
@@ -72,6 +107,9 @@ class DeckTracker:
     def record_played(self, card_id: str) -> None:
         """Record one copy of card_id successfully played from hand."""
         self.played_total[card_id] = self.played_total.get(card_id, 0) + 1
+        if not self.hand_snapshot.get(card_id, 0):
+            # Automatic play can confirm a card missed by the last hand OCR.
+            self.deck_counts[card_id] = max(0, self.deck_counts.get(card_id, 0) - 1)
         # Atomically move the known card out of the hand. A failed next OCR must
         # not count the same physical copy both in hand and as played.
         self.hand_snapshot[card_id] = max(0, self.hand_snapshot.get(card_id, 0) - 1)
@@ -79,14 +117,12 @@ class DeckTracker:
     @property
     def remaining(self) -> dict[str, int]:
         result: dict[str, int] = {}
-        for card_id, copies in self.initial_counts.items():
-            used = self.played_total.get(card_id, 0) + self.hand_snapshot.get(card_id, 0)
-            count = max(0, copies - used)
+        for card_id, count in self.deck_counts.items():
             if count > 0:
                 result[card_id] = count
         return result
 
     @property
     def total_remaining(self) -> int:
-        return sum(self.remaining.values())
+        return sum(self.remaining.values()) + self.unknown_count
 

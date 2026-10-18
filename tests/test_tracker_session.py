@@ -45,6 +45,10 @@ class ReadOnlyBackend:
         self.frames.append(frame)
         return self.count
 
+    def read_deck_count(self, *, frame):
+        self.frames.append(frame)
+        return None
+
     def recognize(self, node, *, frame):
         self.frames.append(frame)
         return SimpleNamespace(hit=True, all_results=[
@@ -72,6 +76,77 @@ class TrackerSessionTests(unittest.TestCase):
         self.session.observe(observation("alpha"))
         self.assertEqual(self.session.tracker.hand_snapshot, {"alpha": 1, "beta": 1})
         self.assertEqual(self.session.tracker.total_remaining, 4)
+
+    def test_unknown_return_then_redraw_keeps_observed_total(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.accept(replace(observation(), deck_count=6))
+        self.assertEqual(self.session.tracker.total_remaining, 6)
+        self.assertEqual(self.session.tracker.unknown_count, 1)
+        self.assertEqual(self.session.tracker.remaining["alpha"], 2)
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.assertEqual(self.session.tracker.total_remaining, 5)
+        self.assertEqual(sum(self.events.call_args.args[0].values()), 5)
+        self.assertEqual(self.events.call_args.args[1]["__unknown__"], "构成未知")
+
+    def test_deck_total_must_stabilize_with_hand(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.session.observe(replace(observation(), deck_count=6))
+        self.session.observe(replace(observation(), deck_count=7))
+        self.assertEqual(self.session.tracker.total_remaining, 5)
+        self.accept(replace(observation(), deck_count=6))
+        self.assertEqual(self.session.tracker.total_remaining, 6)
+
+    def test_explicit_hand_return_does_not_double_count_next_observation(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.session.record_returned("alpha", source="hand")
+        self.accept(replace(observation(), deck_count=6))
+        self.assertEqual(self.session.tracker.remaining, {"alpha": 3, "beta": 3})
+        self.assertEqual(self.session.tracker.unknown_count, 0)
+
+    def test_unseen_deck_loss_marks_composition_uncertain(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.accept(replace(observation("alpha"), deck_count=4))
+        self.assertEqual(self.session.tracker.total_remaining, 4)
+        self.assertEqual(self.session.tracker.remaining, {"alpha": 1, "beta": 2})
+        self.assertEqual(self.session.tracker.unknown_count, 1)
+
+    def test_generated_card_can_be_shuffled_above_initial_counts(self):
+        self.session.record_returned("token", count=4)
+        self.assertEqual(self.session.tracker.remaining["token"], 4)
+        self.assertEqual(self.session.tracker.total_remaining, 10)
+
+    def test_incomplete_hand_cannot_commit_a_return(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.accept(HandObservation(complete=False, deck_count=6))
+        self.assertEqual(self.session.tracker.total_remaining, 5)
+        self.assertEqual(self.session.tracker.unknown_count, 0)
+
+    def test_missing_deck_ocr_preserves_unknown_returns(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.accept(replace(observation(), deck_count=6))
+        self.accept(observation())
+        self.assertEqual(self.session.tracker.total_remaining, 6)
+        self.assertIsNone(self.session.tracker.observed_total)
+
+    def test_returned_card_can_be_drawn_and_played_again(self):
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.session.record_returned("alpha", source="hand")
+        self.accept(replace(observation(), deck_count=6))
+        self.accept(replace(observation("alpha"), deck_count=5))
+        self.session.record_played("alpha")
+        self.accept(replace(observation(), deck_count=5))
+        self.assertEqual(self.session.tracker.remaining, {"alpha": 2, "beta": 3})
+        self.assertEqual(self.session.tracker.unknown_count, 0)
+
+    def test_deck_ocr_uses_supplied_frame_and_rejects_non_numeric_text(self):
+        backend = object.__new__(MaaBackend)
+        frame = object()
+        for raw, expected in [("33", 33), ("0", 0), ("41", 41),
+                              ("3/3", None), ("牌库33", None), ("", None)]:
+            with self.subTest(raw=raw), patch.object(backend, "recognize", return_value=
+                    SimpleNamespace(hit=True, best_result=SimpleNamespace(text=raw))) as recognize:
+                self.assertEqual(backend.read_deck_count(frame=frame), expected)
+                recognize.assert_called_once_with("识别_当前牌库数量", frame=frame)
 
     def test_manual_play_and_later_draw_count_once(self):
         self.accept(observation("alpha"))

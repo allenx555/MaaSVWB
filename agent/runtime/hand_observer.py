@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from battle_engine.models import CardCatalog
 from battle_engine.observer import (
@@ -25,6 +25,7 @@ class HandObservation:
     cards: tuple[ObservedHandCard, ...] = ()
     complete: bool = False
     reason: str = "等待展开手牌"
+    deck_count: int | None = None
 
 
 class HandObserver:
@@ -35,6 +36,12 @@ class HandObserver:
         self.catalog = catalog
 
     def observe(self, frame) -> HandObservation:
+        observation = self._observe_hand(frame)
+        if frame is None:
+            return observation
+        return replace(observation, deck_count=self.backend.read_deck_count(frame=frame))
+
+    def _observe_hand(self, frame) -> HandObservation:
         if frame is None:
             return HandObservation(reason="截图失败，保留上次结果")
         count = self.backend.read_hand_count(frame=frame)

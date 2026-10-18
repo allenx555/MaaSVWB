@@ -88,6 +88,15 @@ class MaaBackend:
         LOGGER.info("实时手牌数量: %d", count)
         return count
 
+    def read_deck_count(self, *, frame=_FRAME_UNSET) -> int | None:
+        """Read only the own-deck numeric region, from the hand observation frame."""
+        detail = self.recognize("识别_当前牌库数量", frame=frame)
+        result = detail.best_result if detail and detail.hit else None
+        text = getattr(result, "text", "").strip()
+        if re.fullmatch(r"[0-9]{1,3}", text) is None:
+            return None
+        return int(text)
+
     def read_energy_points(self) -> tuple[int, int] | None:
         """读取玩家侧能量点，返回（当前值，上限）。"""
         detail = self.recognize(CURRENT_ENERGY)
