@@ -130,16 +130,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Use Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Select previous published release
+        id: release-base
+        run: python tools/release_notes.py --tag "$RELEASE_TAG" --prerelease "$IS_PRERELEASE"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.meta.outputs.tag }}
+          IS_PRERELEASE: ${{ needs.meta.outputs.is_prerelease }}
+
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v4
         id: git-cliff
         with:
           config: .github/cliff.toml
-          # 正式版：使用 tag-pattern 只匹配正式版标签，包含所有从上一个正式版以来的提交
-          # 预发布版：正常生成，只包含从上一个标签以来的提交
+          # 从已发布 Release 起算；中间未发布的 tag 不拆分更新说明。
           args: >-
-            -vv --latest --strip header
-            ${{ needs.meta.outputs.is_prerelease == 'false' && '--tag-pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' || '' }}
+            -vv --strip header
+            --tag '${{ needs.meta.outputs.tag }}'
+            --tag-pattern '${{ steps.release-base.outputs.tag_pattern }}'
+            '${{ steps.release-base.outputs.range }}'
         env:
           OUTPUT: CHANGES.md
           GITHUB_REPO: ${{ github.repository }}
