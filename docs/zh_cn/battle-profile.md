@@ -70,9 +70,10 @@ Battle Profile 是地城试炼自动对战使用的用户策略配置。它只�
 - `play_priority` 越大越优先；相同优先级按当前手牌从左到右选择。
 - `enabled: false` 可临时禁止自动使用一张卡。
 - `max_uses_per_turn` 限制同一回合使用次数。
-- `target.type` 当前支持 `none`、`enemy_leader`、`ally_leader`、
-  `enemy_follower` 和 `ally_follower`。
-- 随从目标可以增加 `selector`，例如 `lowest_defense` 或 `leftmost`。
+- 自动战斗出牌当前支持 `target.type` 为 `none`、`enemy_leader`、`ally_leader`。
+- 配置格式还保留 `enemy_follower`、`ally_follower` 及其 `selector`（例如
+  `lowest_defense`、`leftmost`）；运行时尚未实现随从目标选择，使用这些目标的策略
+  会在首次游戏操作前报错。此限制也适用于卡牌默认目标和组合步骤的目标。
 - `when` 可以限制最低能量、最低空余场地格，以及要求敌方守护存在或不存在。
 
 实际能否出牌以盘面观察器识别到的可用状态为准。识别到的动态费用优先于卡牌注册表
@@ -110,6 +111,8 @@ Battle Profile 是地城试炼自动对战使用的用户策略配置。它只�
 ```
 
 组合和单卡共用优先级范围；优先级相同时，组合优先。
+组合开始后会连续执行剩余步骤，每步重新识别手牌并校验能量、场地和使用次数，
+不会插入其他单卡。若剩余步骤条件不再满足或观测持续失败，将停止任务并报错。
 
 ## 进化策略
 

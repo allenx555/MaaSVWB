@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from _thread import LockType
 import os
 import sys
 import threading
@@ -111,20 +112,22 @@ def start_stop_monitor(
     stop_file: Path | None,
     done_event: threading.Event,
     stop_event: threading.Event,
+    submission_lock: LockType | None = None,
 ) -> threading.Thread | None:
     if stop_file is None:
         return None
     stop_file = stop_file.resolve()
     stop_file.parent.mkdir(parents=True, exist_ok=True)
-    stop_file.unlink(missing_ok=True)
+    gate = submission_lock if submission_lock is not None else threading.Lock()
 
     def monitor() -> None:
-        while not done_event.wait(0.2):
-            if not stop_file.is_file():
-                continue
-            stop_event.set()
-            request_task_stop(tasker, "收到停止请求，正在停止 Maa 任务")
-            return
+        while not done_event.is_set():
+            with gate:
+                if stop_file.is_file():
+                    stop_event.set()
+                    request_task_stop(tasker, "收到停止请求，正在停止 Maa 任务")
+                    return
+            done_event.wait(0.2)
 
     thread = threading.Thread(target=monitor, name="maasvwb-stop-monitor", daemon=True)
     thread.start()
@@ -240,11 +243,19 @@ def main() -> int:
         }
     done_event = threading.Event()
     stop_event = threading.Event()
-    monitor = start_stop_monitor(tasker, args.stop_file, done_event, stop_event)
+    submission_lock = threading.Lock()
+    monitor = start_stop_monitor(tasker, args.stop_file, done_event, stop_event, submission_lock)
     try:
         print(f"即将执行: {args.task} / {display_target}")
         emit_event("run", f"即将执行：{args.task} / {display_target}", state="starting")
-        task = tasker.post_task(entry, override)
+        # Do not let a stop be consumed before submission and then start a new
+        # task behind it. Requests arriving during post_task are handled next.
+        with submission_lock:
+            if stop_event.is_set() or (args.stop_file is not None and args.stop_file.is_file()):
+                stop_event.set()
+                emit_event("run", "任务已由用户停止", state="stopped")
+                return 130
+            task = tasker.post_task(entry, override)
         if not wait_task_interruptibly(tasker, task):
             emit_event("run", "任务已由用户停止", state="stopped")
             return 130

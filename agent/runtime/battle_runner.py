@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from battle_engine.deck_tracker import DeckTracker
-from battle_engine.models import BattleState, CardCatalog
+from battle_engine.models import ActionPlan, BattleState, CardCatalog, CardRule, Target
 from battle_engine.observer import (
     HandText,
     ObservedHandCard,
@@ -63,11 +63,34 @@ class BattleRunner:
         self.layout = layout
         self.catalog = catalog
         self.policy = policy
+        self._validate_play_targets()
         self._deck_code = deck_code
         self._deck_tracker = self._make_tracker()
         self._tracker_session = DeckTrackingSession(self._deck_tracker, catalog, "dungeon")
         self._tracker_observer = HandObserver(backend, self._tracker_session.candidate_catalog())
         self._hand_expanded = False
+
+    @staticmethod
+    def _validate_play_target(target: Target) -> None:
+        if target.type not in {"none", "enemy_leader", "ally_leader"}:
+            raise SolutionError(
+                f"当前自动战斗暂不支持出牌目标 {target.type!r}"
+                f"（selector={target.selector!r}），请使用无需目标或主战者目标的策略"
+            )
+
+    def _validate_play_targets(self) -> None:
+        # Validate effective targets, including defaults and combo overrides,
+        # before the first mulligan, play or other device action.
+        for card_id in sorted(self.policy.playable_ids):
+            rule = self.policy.profile.cards.get(card_id, CardRule())
+            if rule.enabled:
+                self._validate_play_target(rule.target or self.catalog.cards[card_id].default_target)
+        for combo in self.policy.profile.combos:
+            for step in combo.steps:
+                rule = self.policy.profile.cards.get(step.card_id, CardRule())
+                self._validate_play_target(
+                    step.target or rule.target or self.catalog.cards[step.card_id].default_target
+                )
 
     def _make_tracker(self) -> DeckTracker:
         if self._deck_code:
@@ -274,6 +297,7 @@ class BattleRunner:
     def _play_cards(self) -> tuple[str, ...]:
         played_counts: dict[str, int] = {}
         played_followers: list[str] = []
+        pending_plan: ActionPlan | None = None
         no_progress = 0
         for _ in range(self.policy.profile.safety.max_actions_per_turn):
             energy_pair = self.backend.read_energy_points()
@@ -294,6 +318,8 @@ class BattleRunner:
                 time.sleep(0.2)
                 continue
             if not hand:
+                if pending_plan is not None:
+                    raise SolutionError("组合剩余步骤无法执行：未识别到所需手牌，已停止")
                 break
             board = self.backend.observe_board_state()
             if board is None:
@@ -307,10 +333,18 @@ class BattleRunner:
                 hand=tuple(item.card for item in hand),
                 played_counts=played_counts,
             )
-            plan = self.policy.choose_play_plan(state)
-            if plan is None:
+            if pending_plan is not None:
+                plan = self.policy.refresh_play_plan(pending_plan, state)
+                if plan is None:
+                    raise SolutionError("组合剩余步骤无法执行：手牌、能量或盘面条件已变化，已停止")
+            else:
+                plan = self.policy.choose_play_plan(state)
+            if plan is None or not plan.steps:
                 break
             step = plan.steps[0]
+            if len(plan.steps) > 1:
+                pending_plan = plan
+            self._validate_play_target(step.target)
             selected = next(
                 (item for item in hand if item.card.hand_index == step.hand_index),
                 None,
@@ -332,10 +366,10 @@ class BattleRunner:
                 *selected.source, *self.layout.fixed_point("play_area"), 350
             ):
                 raise SolutionError(f"使用卡牌失败: {selected.name}")
-            if step.target.type == "enemy_leader":
+            if step.target.type in {"enemy_leader", "ally_leader"}:
                 time.sleep(0.7)
-                if not self.backend.tap(*self.layout.fixed_point("enemy_leader")):
-                    raise SolutionError(f"选择敌方主战者失败: {selected.name}")
+                if not self.backend.tap(*self.layout.fixed_point(step.target.type)):
+                    raise SolutionError(f"选择目标 {step.target.type} 失败: {selected.name}")
                 self._hand_expanded = False
             changed = self.backend.wait_changed(
                 before,
@@ -354,6 +388,7 @@ class BattleRunner:
                 if definition is not None and definition.type == "follower":
                     played_followers.append(step.card_id)
                 no_progress = 0
+                pending_plan = replace(plan, steps=plan.steps[1:]) if len(plan.steps) > 1 else None
             else:
                 no_progress += 1
                 LOGGER.warning("出牌后未检测到盘面变化: %s", selected.name)
@@ -361,6 +396,8 @@ class BattleRunner:
                     break
             time.sleep(0.6)
 
+        if pending_plan is not None:
+            raise SolutionError("组合尚未完成：观测失败或达到安全限制，已停止")
         return tuple(played_followers)
 
     def _try_evolve_existing_follower(self) -> bool:

@@ -9,6 +9,7 @@ from .models import (
     CardCatalog,
     CardRule,
     ComboRule,
+    ComboStep,
     ObservedCard,
     PlannedCardPlay,
     PlayCondition,
@@ -97,13 +98,29 @@ class BattlePolicy:
         )
 
     def _plan_combo(self, combo: ComboRule, state: BattleState) -> ActionPlan | None:
+        planned = self._plan_steps(combo.steps, state)
+        if planned is None:
+            return None
+        return ActionPlan(
+            reason=f"combo:{combo.id}", priority=combo.priority, steps=planned
+        )
+
+    def refresh_play_plan(self, plan: ActionPlan, state: BattleState) -> ActionPlan | None:
+        """重新校验待执行步骤并绑定实时手牌序号，不重新竞争优先级。"""
+        steps = tuple(ComboStep(step.card_id, step.target) for step in plan.steps)
+        planned = self._plan_steps(steps, state)
+        return replace(plan, steps=planned) if planned is not None else None
+
+    def _plan_steps(
+        self, steps: tuple[ComboStep, ...], state: BattleState
+    ) -> tuple[PlannedCardPlay, ...] | None:
         available = sorted(state.hand, key=lambda card: card.hand_index)
         remaining_energy = state.energy
         remaining_slots = state.board_slots
         local_uses = dict(state.played_counts)
         planned: list[PlannedCardPlay] = []
 
-        for step in combo.steps:
+        for step in steps:
             rule = self.profile.cards.get(step.card_id, CardRule())
             step_state = replace(
                 state,
@@ -139,11 +156,7 @@ class BattlePolicy:
             target = step.target or rule.target or definition.default_target
             planned.append(PlannedCardPlay(step.card_id, target, match.hand_index))
 
-        return ActionPlan(
-            reason=f"combo:{combo.id}",
-            priority=combo.priority,
-            steps=tuple(planned),
-        )
+        return tuple(planned)
 
     def _rule_available(
         self,

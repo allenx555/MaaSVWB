@@ -134,10 +134,19 @@ jobs:
             -Os '${{ matrix.os }}' `
             -RuntimeIdentifier '${{ matrix.rid }}'
 
+      - name: Archive release with executable permissions
+        shell: pwsh
+        run: >-
+          python tools/archive_release.py
+          --source install
+          --output "build/release/MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}-${{ needs.meta.outputs.tag }}.zip"
+          --os '${{ matrix.os }}'
+
       - uses: actions/upload-artifact@v4
         with:
           name: MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}
-          path: "install"
+          path: "build/release/*.zip"
+          if-no-files-found: error
 
   changelog:
     name: Generate changelog
@@ -173,16 +182,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: assets
-
-      - run: |
-          cd assets
-          for f in *; do
-            (cd $f && zip -r ../$f-${{ needs.meta.outputs.tag }}.zip .)
-          done
+          pattern: MaaSVWB-*
+          merge-multiple: true
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: assets/*
+          files: assets/*.zip
           tag_name: ${{ needs.meta.outputs.tag }}
           body: ${{ needs.changelog.outputs.release_body }}
           draft: false
