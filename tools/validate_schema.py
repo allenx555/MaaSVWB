@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import argparse
+from io import TextIOWrapper
 from pathlib import Path
 from jsonschema import Draft7Validator, Draft202012Validator
 from jsonschema.exceptions import ValidationError
@@ -84,7 +85,7 @@ def load_jsonc(file_path):
         print(f"JSON decode error in {file_path}: {e}")
         # 调试：保存清理后的内容
         debug_file = Path(tempfile.gettempdir()) / f"debug_{Path(file_path).name}"
-        with open(debug_file, "w") as f:
+        with open(debug_file, "w", encoding="utf-8") as f:
             f.write(clean_content)
         print(f"Cleaned content saved to {debug_file}")
         raise
@@ -373,4 +374,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows CI may redirect output through a legacy encoding such as cp1252.
+    # Status symbols, resource paths and validation errors can contain Unicode.
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, TextIOWrapper):
+            stream.reconfigure(encoding="utf-8")
     main()
