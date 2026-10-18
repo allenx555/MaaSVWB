@@ -55,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\setup_gui.ps1
 ## 本地发布
 
 ```powershell
-.\tools\package.ps1 -Version v0.1.0 -Os win -RuntimeIdentifier win-x64
+.\tools\package.ps1 -Version v0.1.0 -RuntimeIdentifier win-x64
 ```
 
 脚本会清理并重新生成 `install/`，其中包含单文件 GUI、资源、目录、Runner、Agent 和

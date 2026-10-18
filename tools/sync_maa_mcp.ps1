@@ -3,8 +3,7 @@ param()
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $pythonCandidates = @(
-    (Join-Path $projectRoot ".ai-tools\maa-mcp\Scripts\python.exe"),
-    (Join-Path $projectRoot ".ai-tools/maa-mcp/bin/python")
+    (Join-Path $projectRoot ".ai-tools\maa-mcp\Scripts\python.exe")
 )
 $mcpPython = $pythonCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $mcpPython) {

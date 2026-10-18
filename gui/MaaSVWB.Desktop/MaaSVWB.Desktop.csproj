@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>MaaSVWB</AssemblyName>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
@@ -22,7 +22,8 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
     <PackageReference Include="Avalonia" Version="11.3.20" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Win32" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Skia" Version="11.3.20" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.20" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
   </ItemGroup>

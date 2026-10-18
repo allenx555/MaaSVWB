@@ -69,22 +69,6 @@ jobs:
             arch: aarch64
             runner: windows-11-arm
             rid: win-arm64
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-            rid: linux-x64
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-22.04-arm
-            rid: linux-arm64
-          - os: macos
-            arch: x86_64
-            runner: macos-15-intel
-            rid: osx-x64
-          - os: macos
-            arch: aarch64
-            runner: macos-15
-            rid: osx-arm64
       fail-fast: false
 
     steps:
@@ -107,16 +91,14 @@ jobs:
           python -m pip install -r requirements-build.txt
           ./tools/package.ps1 `
             -Version '${{ needs.meta.outputs.tag }}' `
-            -Os '${{ matrix.os }}' `
             -RuntimeIdentifier '${{ matrix.rid }}'
 
-      - name: Archive release with executable permissions
+      - name: Archive release
         shell: pwsh
         run: >-
           python tools/archive_release.py
           --source install
           --output "build/release/MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}-${{ needs.meta.outputs.tag }}.zip"
-          --os '${{ matrix.os }}'
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,7 +117,6 @@ jobs:
         run: >-
           python tools/smoke_release.py
           --archive "build/downloaded-release/MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}-${{ needs.meta.outputs.tag }}.zip"
-          --os '${{ matrix.os }}'
 
   changelog:
     name: Generate changelog

@@ -27,9 +27,7 @@ public static class ProjectLocator
         var candidates = new[]
         {
             Path.Combine(projectRoot, "runtime", "MaaSVWB.Runner.exe"),
-            Path.Combine(projectRoot, "runtime", "MaaSVWB.Runner"),
             Path.Combine(projectRoot, ".venv", "Scripts", "python.exe"),
-            Path.Combine(projectRoot, ".venv", "bin", "python"),
         };
         return candidates.FirstOrDefault(File.Exists) ?? "python";
     }
@@ -50,8 +48,7 @@ public static class ProjectLocator
         {
             return false;
         }
-        var hasRuntime = File.Exists(Path.Combine(path, "runtime", "MaaSVWB.Runner.exe"))
-            || File.Exists(Path.Combine(path, "runtime", "MaaSVWB.Runner"));
+        var hasRuntime = File.Exists(Path.Combine(path, "runtime", "MaaSVWB.Runner.exe"));
         var hasDevelopmentScript = File.Exists(Path.Combine(path, "tools", "run_android.py"));
         if (!hasRuntime && !hasDevelopmentScript)
         {

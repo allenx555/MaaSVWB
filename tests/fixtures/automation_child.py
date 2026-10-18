@@ -25,8 +25,6 @@ def main() -> int:
         pid=os.getpid(),
         cwd=str(root),
         project_root=project_root,
-        # macOS can expose the same temporary directory through /var and
-        # /private/var. Verify filesystem identity, not the spelling of getcwd().
         cwd_matches_project_root=project_root is not None and root.samefile(project_root),
     )
     (root / "arguments.json").write_text(json.dumps(data, default=str), encoding="utf-8")

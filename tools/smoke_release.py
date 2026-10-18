@@ -12,8 +12,8 @@ from zipfile import ZipFile
 from archive_release import executable_paths, validate_archive
 
 
-def extract_release(archive_path: Path, destination: Path, os_name: str) -> None:
-    validate_archive(archive_path, os_name)
+def extract_release(archive_path: Path, destination: Path) -> None:
+    validate_archive(archive_path)
     destination = destination.resolve()
     with ZipFile(archive_path) as archive:
         for entry in archive.infolist():
@@ -23,20 +23,15 @@ def extract_release(archive_path: Path, destination: Path, os_name: str) -> None
             if stat.S_ISLNK(entry.external_attr >> 16):
                 raise ValueError(f"Unexpected symlink in release: {entry.filename}")
         archive.extractall(destination)
-        if os_name != "win":
-            # zipfile does not restore Unix permissions. Apply only the stored
-            # ordinary rwx bits after validating the archive's executable modes.
-            for entry in archive.infolist():
-                (destination / entry.filename).chmod((entry.external_attr >> 16) & 0o777)
 
 
-def check_executables(package_root: Path, working_directory: Path, os_name: str) -> None:
+def check_executables(package_root: Path, working_directory: Path) -> None:
     env = os.environ.copy()
     for key in ("MAASVWB_ROOT", "MAAFW_BINARY_PATH", "PYTHONPATH", "PYTHONHOME"):
         env.pop(key, None)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
-    for relative, role in zip(executable_paths(os_name)[1:], ("runner", "agent")):
+    for relative, role in zip(executable_paths()[1:], ("runner", "agent")):
         completed = subprocess.run(
             [str(package_root / relative), "--self-check"], cwd=working_directory,
             env=env, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -54,22 +49,21 @@ def check_executables(package_root: Path, working_directory: Path, os_name: str)
         print(f"PASS extracted {relative}: resources, imports and native runtime")
 
 
-def smoke_release(archive_path: Path, os_name: str) -> None:
+def smoke_release(archive_path: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="maasvwb-release-smoke-") as temporary:
         root = Path(temporary)
         package = root / "package with spaces"
         working = root / "unrelated-working-directory"
         working.mkdir()
-        extract_release(archive_path, package, os_name)
-        check_executables(package, working, os_name)
+        extract_release(archive_path, package)
+        check_executables(package, working)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Smoke-test the downloaded final release ZIP without a device")
     parser.add_argument("--archive", type=Path, required=True)
-    parser.add_argument("--os", choices=("win", "linux", "macos"), required=True)
     args = parser.parse_args()
-    smoke_release(args.archive.resolve(), args.os)
+    smoke_release(args.archive.resolve())
 
 
 if __name__ == "__main__":

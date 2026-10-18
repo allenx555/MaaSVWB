@@ -29,7 +29,7 @@
 | Profile → Policy → BattleRunner → 有状态设备替身      | 固定组合不被单卡插入、实时手牌序号、重复卡牌、目标覆盖、条件失效与安全限制                                            | `tests/test_battle_integration.py`                            |
 | 停止文件 → Monitor → Tasker → MaaBackend → Controller | 提前停止不提交任务；运行中接受停止后不继续排入点击、拖动或按键                                                        | `tests/test_run_android.py`、`tests/test_stop_integration.py` |
 | AutomationService → 真实 Python 子进程 → 事件解析     | 含空格及中文的参数、UTF-8 事件、末行输出、错误事件、非零退出、优雅停止、强制终止、取消、Dispose、并发运行、失败后重试 | `gui/MaaSVWB.Desktop.IntegrationTests/`                       |
-| 最终 ZIP → 解压 → Runner/Agent                        | ZIP 内容和执行权限、独立工作目录启动、无开发环境变量、原生库与资源加载                                                | `tools/smoke_release.py`                                      |
+| 最终 ZIP → 解压 → Runner/Agent                        | ZIP 内容、独立工作目录启动、无开发环境变量、原生库与资源加载                                                | `tools/smoke_release.py`                                      |
 
 桌面进程测试会启动受控子进程及其后代，检查停止后是否退出。Windows 虚拟环境有额外
 Python 启动进程，因此需要覆盖至少两层后代。强制终止等待沿用产品的 8 秒宽限期。
@@ -37,11 +37,10 @@ Python 启动进程，因此需要覆盖至少两层后代。强制终止等待�
 ## 发布包验证
 
 ```powershell
-python tools/archive_release.py --source install --output build/release/local.zip --os win
-python tools/smoke_release.py --archive build/release/local.zip --os win
+python tools/archive_release.py --source install --output build/release/local.zip
+python tools/smoke_release.py --archive build/release/local.zip
 ```
 
-`--os` 可选 `win`、`linux`、`macos`，必须在与包匹配的平台上运行冒烟测试。
 发布流水线先复用完整检查工作流，通过后才构建。构建完成后先上传 ZIP，再下载同一
 Artifact，解压到独立临时目录；只有冒烟通过后，构建
 job 才成功，发布 job 才能继续。不会修改 GitHub 上已有的发布包。
@@ -51,8 +50,7 @@ Runner 检查模型文件、布局、卡牌、策略、解法、目录及 Interf
 加载资源、注册动作；Agent 检查相同静态资源，并加载自己的原生服务库。Agent 的检查
 不启动 socket 服务，不代表客户端与 Agent 的通信已验证。
 
-CI 的普通检查在 Windows、Linux、macOS 上运行桌面进程测试；发布流水线在每个构建
-平台和架构上运行最终归档冒烟。Python 对原生 Unix 权限的测试在 Windows 上明确跳过。
+CI 在 Windows 上运行桌面进程测试；发布流水线在 Windows x64/ARM64 上运行最终归档冒烟。
 
 ## 授权实机验收
 

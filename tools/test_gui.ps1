@@ -1,14 +1,12 @@
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $pythonCandidates = @(
-    (Join-Path $projectRoot ".venv/Scripts/python.exe"),
-    (Join-Path $projectRoot ".venv/bin/python")
+    (Join-Path $projectRoot ".venv/Scripts/python.exe")
 )
 $python = $pythonCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $python) { $python = (Get-Command python -ErrorAction Stop).Source }
 $dotnetCandidates = @(
-    (Join-Path $projectRoot ".dotnet/dotnet.exe"),
-    (Join-Path $projectRoot ".dotnet/dotnet")
+    (Join-Path $projectRoot ".dotnet/dotnet.exe")
 )
 $dotnet = $dotnetCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $dotnet) { $dotnet = "dotnet" }

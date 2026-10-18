@@ -48,7 +48,7 @@ on:
 
 jobs:
   resource:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -89,7 +89,7 @@ jobs:
           python -m compileall -q agent tools tests
 
       - name: Run Python static type check
-        run: npx pyright --pythonpath "$(command -v python)"
+        run: npx pyright --pythonpath python
 
       - name: Validate JSON Schema
         run: |
@@ -99,11 +99,7 @@ jobs:
         run: dotnet build gui/MaaSVWB.Desktop/MaaSVWB.Desktop.csproj
 
   desktop-integration:
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -3,10 +3,7 @@ param(
     [string]$Version,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet("win", "linux", "macos")]
-    [string]$Os,
-
-    [Parameter(Mandatory = $true)]
+    [ValidateSet("win-x64", "win-arm64")]
     [string]$RuntimeIdentifier
 )
 
@@ -30,7 +27,7 @@ if (Test-Path -LiteralPath $installPath) {
 
 Push-Location -LiteralPath $projectRoot
 try {
-    & $python tools/install.py $Version $Os
+    & $python tools/install.py $Version
     if ($LASTEXITCODE -ne 0) {
         throw "Resource installation failed with exit code $LASTEXITCODE."
     }

@@ -13,15 +13,6 @@ working_dir = Path(__file__).parent.parent.resolve()
 install_path = working_dir / Path("install")
 version = len(sys.argv) > 1 and sys.argv[1] or "v0.0.1"
 
-# the first parameter is self name
-if sys.argv.__len__() < 3:
-    print("Usage: python install.py <version> <os>")
-    print("Example: python install.py v1.0.0 win")
-    sys.exit(1)
-
-os_name = sys.argv[2]
-
-
 
 def install_resource():
 
@@ -46,9 +37,8 @@ def install_resource():
 
     interface = build_interface()
     interface["version"] = version
-    runner_suffix = ".exe" if os_name == "win" else ""
     interface["agent"] = {
-        "child_exec": f"./runtime/MaaSVWB.Agent{runner_suffix}",
+        "child_exec": "./runtime/MaaSVWB.Agent.exe",
         "child_args": [],
     }
 

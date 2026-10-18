@@ -13,7 +13,7 @@
 </div>
 <div>
   <a href="https://github.com/allenx555/MaaSVWB/releases"><img alt="release" src="https://img.shields.io/github/v/release/allenx555/MaaSVWB?display_name=tag" /></a>
-  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet" />
+  <img alt="platform" src="https://img.shields.io/badge/platform-Windows-blueviolet" />
 </div>
 
 </div>
@@ -202,13 +202,12 @@ npx @nekosu/maa-tools check
 
 ```powershell
 $version = git describe --tags --always --dirty
-.\tools\package.ps1 -Version $version -Os win -RuntimeIdentifier win-x64
+.\tools\package.ps1 -Version $version -RuntimeIdentifier win-x64
 ```
 
 成品位于 `install/`：桌面前端以单文件 `MaaSVWB.exe` 发布，
 资源、目录和内置运行器分别位于 `resource/`、`catalog/`与 `runtime/`。
-推送 `v*` 标签后，GitHub Actions 会为 Windows、Linux 和 macOS 的
-x64/ARM64 架构生成 ZIP。
+推送 `v*` 标签后，GitHub Actions 会为 Windows x64/ARM64 架构生成 ZIP。
 
 贡献流程见[开发指南](./docs/zh_cn/develop/how_to_develop.md)和
 [PR 规范](./docs/zh_cn/develop/pull_request_guidelines.md)。可选 AI 开发工具见

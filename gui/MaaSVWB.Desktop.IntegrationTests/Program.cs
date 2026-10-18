@@ -258,7 +258,7 @@ internal static class Program
                 catch (ArgumentException) { }
             }
             var temporary = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
-            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var comparison = StringComparison.OrdinalIgnoreCase;
             if (!string.Equals(Path.GetDirectoryName(Root), temporary, comparison)
                 || !Path.GetFileName(Root).StartsWith("maasvwb-integration-", StringComparison.Ordinal))
                 throw new InvalidOperationException($"Refusing to delete unexpected test path: {Root}");

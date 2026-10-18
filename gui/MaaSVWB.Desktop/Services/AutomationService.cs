@@ -342,30 +342,27 @@ public sealed class AutomationService : IDisposable
         {
             if (!process.HasExited)
             {
-                if (OperatingSystem.IsWindows())
+                // Kill(entireProcessTree) can leave grandchildren alive
+                // behind the Windows venv Python launcher. Use the OS tree
+                // terminator while the owned root process still exists.
+                var startInfo = new ProcessStartInfo
                 {
-                    // Kill(entireProcessTree) can leave grandchildren alive
-                    // behind the Windows venv Python launcher. Use the OS tree
-                    // terminator while the owned root process still exists.
-                    var startInfo = new ProcessStartInfo
-                    {
-                        FileName = Path.Combine(Environment.SystemDirectory, "taskkill.exe"),
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                    };
-                    startInfo.ArgumentList.Add("/PID");
-                    startInfo.ArgumentList.Add(process.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                    startInfo.ArgumentList.Add("/T");
-                    startInfo.ArgumentList.Add("/F");
-                    using var killer = Process.Start(startInfo)!;
-                    var output = killer.StandardOutput.ReadToEndAsync();
-                    var errors = killer.StandardError.ReadToEndAsync();
-                    killer.WaitForExit();
-                    Task.WhenAll(output, errors).GetAwaiter().GetResult();
-                    if (process.HasExited) return;
-                }
+                    FileName = Path.Combine(Environment.SystemDirectory, "taskkill.exe"),
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                startInfo.ArgumentList.Add("/PID");
+                startInfo.ArgumentList.Add(process.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                startInfo.ArgumentList.Add("/T");
+                startInfo.ArgumentList.Add("/F");
+                using var killer = Process.Start(startInfo)!;
+                var output = killer.StandardOutput.ReadToEndAsync();
+                var errors = killer.StandardError.ReadToEndAsync();
+                killer.WaitForExit();
+                Task.WhenAll(output, errors).GetAwaiter().GetResult();
+                if (process.HasExited) return;
                 process.Kill(entireProcessTree: true);
             }
         }
