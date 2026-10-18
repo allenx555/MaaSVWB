@@ -11,6 +11,11 @@ def configure_utf8_stdio() -> None:
 
 def main():
     configure_utf8_stdio()
+    if sys.argv[1:] == ["--self-check"]:
+        from runtime.runner import resolve_project_root
+        from runtime.self_check import check_runtime
+        check_runtime(resolve_project_root(), "agent")
+        return 0
     if len(sys.argv) < 2:
         print("用法: MaaSVWB.Agent <socket_id>")
         print("socket_id 由 MaaFramework 通用 UI 注入。")

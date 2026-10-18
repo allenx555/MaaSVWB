@@ -94,3 +94,5 @@ AI 修改 MaaFramework 资源时应读取已安装的 Skill；需要现场设备
 .\tools\test.ps1
 npx @nekosu/maa-tools check
 ```
+
+集成测试的调用链、单独运行方式与发布包冒烟见[跨模块验证](./testing.md)。

@@ -46,6 +46,7 @@ def configure_utf8_stdio() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="运行 MaaSVWB 安卓模拟器任务")
+    parser.add_argument("--self-check", action="store_true", help="检查运行依赖和资源，不发现或连接设备")
     parser.add_argument("--adb", type=Path, help="模拟器 adb.exe 的完整路径")
     parser.add_argument("--serial", help="设备地址/序列号；不填时使用发现到的第一台设备")
     parser.add_argument(
@@ -174,6 +175,10 @@ def wait_task_interruptibly(tasker: Tasker, task, poll_interval: float = 0.1) ->
 def main() -> int:
     configure_utf8_stdio()
     args = parse_args()
+    if args.self_check:
+        from runtime.self_check import check_runtime
+        check_runtime(PROJECT_ROOT, "runner")
+        return 0
     solution_id = args.solution or ("puzzle_001" if args.task == "puzzle" else None)
     if args.battle_count < 1 or args.battle_count > 99:
         raise RuntimeError("战斗次数必须在 1 到 99 之间。")

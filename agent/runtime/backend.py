@@ -51,14 +51,20 @@ class MaaBackend:
         return bool(job.succeeded)
 
     def tap(self, x: int, y: int) -> bool:
+        if self.is_stopping():
+            return False
         return self._wait_success(self.controller.post_click(x, y))
 
     def swipe(self, x1: int, y1: int, x2: int, y2: int, duration_ms: int) -> bool:
+        if self.is_stopping():
+            return False
         return self._wait_success(
             self.controller.post_swipe(x1, y1, x2, y2, duration_ms)
         )
 
     def key(self, keycode: int) -> bool:
+        if self.is_stopping():
+            return False
         return self._wait_success(self.controller.post_click_key(keycode))
 
     def verify(self, pipeline_node: str, frame=_FRAME_UNSET) -> bool:

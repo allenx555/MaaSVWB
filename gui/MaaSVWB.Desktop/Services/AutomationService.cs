@@ -12,6 +12,8 @@ public sealed class AutomationService : IDisposable
     private Process? _process;
     private string? _stopFile;
     private bool _stopRequested;
+    private bool _disposed;
+    private Task? _stopTask;
 
     public bool WasStopped
     {
@@ -52,13 +54,7 @@ public sealed class AutomationService : IDisposable
         string? deckCode = null,
         CancellationToken cancellationToken = default)
     {
-        lock (_gate)
-        {
-            if (_process is { HasExited: false })
-            {
-                throw new InvalidOperationException("已有任务正在运行。");
-            }
-        }
+        cancellationToken.ThrowIfCancellationRequested();
 
         var bundledRunner = string.Equals(
             Path.GetFileNameWithoutExtension(pythonPath),
@@ -160,27 +156,45 @@ public sealed class AutomationService : IDisposable
             }
         };
 
-        lock (_gate)
-        {
-            _process = process;
-            _stopFile = execute ? stopFile : null;
-            _stopRequested = false;
-        }
-
         try
         {
-            if (!process.Start())
+            lock (_gate)
             {
-                throw new InvalidOperationException("无法启动自动化进程。");
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                if (_process is not null)
+                {
+                    throw new InvalidOperationException("已有任务正在运行。");
+                }
+                if (!process.Start())
+                {
+                    throw new InvalidOperationException("无法启动自动化进程。");
+                }
+                _process = process;
+                _stopFile = execute ? stopFile : null;
+                _stopRequested = false;
+                _stopTask = null;
             }
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             await process.WaitForExitAsync(cancellationToken);
-            await Task.WhenAll(process.WaitForExitAsync(), Task.Delay(80, CancellationToken.None));
             return process.ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            await StopAsync();
+            throw;
         }
         finally
         {
+            Task? stopTask;
+            lock (_gate)
+            {
+                stopTask = ReferenceEquals(_process, process) ? _stopTask : null;
+            }
+            if (stopTask is not null)
+            {
+                await stopTask;
+            }
             lock (_gate)
             {
                 if (ReferenceEquals(_process, process))
@@ -208,21 +222,23 @@ public sealed class AutomationService : IDisposable
         }
     }
 
-    public void Stop()
+    public void Stop() => _ = StopAsync();
+
+    public Task StopAsync()
     {
-        Process? process;
-        string? stopFile;
         lock (_gate)
         {
-            if (_process is not { HasExited: false } running)
+            if (_process is null)
             {
-                return;
+                return Task.CompletedTask;
             }
-            process = running;
-            stopFile = _stopFile;
             _stopRequested = true;
+            return _stopTask ??= StopProcessAsync(_process, _stopFile);
         }
+    }
 
+    private async Task StopProcessAsync(Process process, string? stopFile)
+    {
         var stopSignalWritten = false;
         if (!string.IsNullOrWhiteSpace(stopFile))
         {
@@ -241,20 +257,19 @@ public sealed class AutomationService : IDisposable
             }
         }
 
-        _ = Task.Run(async () =>
+        var exited = process.WaitForExitAsync();
+        if (stopSignalWritten)
         {
-            if (stopSignalWritten)
+            await Task.WhenAny(exited, Task.Delay(TimeSpan.FromSeconds(8)));
+        }
+        lock (_gate)
+        {
+            if (ReferenceEquals(_process, process))
             {
-                await Task.Delay(TimeSpan.FromSeconds(8));
+                KillProcess(process);
             }
-            lock (_gate)
-            {
-                if (ReferenceEquals(_process, process) && !process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-            }
-        });
+        }
+        await exited;
     }
 
     private static string? FormatOutputLine(string line, out TrackerSnapshot? snapshot)
@@ -321,5 +336,57 @@ public sealed class AutomationService : IDisposable
             root.TryGetProperty("reason", out var reason) ? reason.GetString() ?? "" : "");
     }
 
-    public void Dispose() => Stop();
+    private static void KillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    // Kill(entireProcessTree) can leave grandchildren alive
+                    // behind the Windows venv Python launcher. Use the OS tree
+                    // terminator while the owned root process still exists.
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = Path.Combine(Environment.SystemDirectory, "taskkill.exe"),
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                    };
+                    startInfo.ArgumentList.Add("/PID");
+                    startInfo.ArgumentList.Add(process.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    startInfo.ArgumentList.Add("/T");
+                    startInfo.ArgumentList.Add("/F");
+                    using var killer = Process.Start(startInfo)!;
+                    var output = killer.StandardOutput.ReadToEndAsync();
+                    var errors = killer.StandardError.ReadToEndAsync();
+                    killer.WaitForExit();
+                    Task.WhenAll(output, errors).GetAwaiter().GetResult();
+                    if (process.HasExited) return;
+                }
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // The process may exit between HasExited and Kill.
+        }
+    }
+
+    public void Dispose()
+    {
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_process is not null)
+            {
+                // Desktop Exit cannot await a thread-pool stop timer.
+                _stopRequested = true;
+                KillProcess(_process);
+            }
+        }
+    }
 }

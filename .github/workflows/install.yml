@@ -79,8 +79,13 @@ jobs:
       is_release: ${{ steps.set_tag.outputs.is_release }}
       is_prerelease: ${{ steps.set_tag.outputs.is_prerelease }}
 
+  validation:
+    uses: ./.github/workflows/check.yml
+    permissions:
+      contents: read
+
   install:
-    needs: meta
+    needs: [meta, validation]
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -147,6 +152,19 @@ jobs:
           name: MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}
           path: "build/release/*.zip"
           if-no-files-found: error
+
+      - name: Download final archive for verification
+        uses: actions/download-artifact@v4
+        with:
+          name: MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}
+          path: build/downloaded-release
+
+      - name: Smoke-test extracted Runner and Agent without a device
+        shell: pwsh
+        run: >-
+          python tools/smoke_release.py
+          --archive "build/downloaded-release/MaaSVWB-${{ matrix.os }}-${{ matrix.arch }}-${{ needs.meta.outputs.tag }}.zip"
+          --os '${{ matrix.os }}'
 
   changelog:
     name: Generate changelog

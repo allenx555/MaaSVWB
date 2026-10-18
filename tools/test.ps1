@@ -43,4 +43,8 @@ Invoke-PythonStep tools/validate_schema.py `
     --exclude-dirs assets/resource/solutions assets/resource/layouts `
     --interface-files assets/interface.json
 
+Write-Host "[test] Desktop to Python process integration"
+& (Join-Path $PSScriptRoot "test_gui.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "[test] All checks passed"
