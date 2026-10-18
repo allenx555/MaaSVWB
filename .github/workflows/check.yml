@@ -6,6 +6,7 @@ on:
       - "**"
     paths:
       - ".github/workflows/check.yml"
+      - ".github/workflows/install.yml"
       - ".agents/**"
       - "AGENTS.md"
       - "CLAUDE.md"
@@ -26,6 +27,7 @@ on:
       - "**"
     paths:
       - ".github/workflows/check.yml"
+      - ".github/workflows/install.yml"
       - ".agents/**"
       - "AGENTS.md"
       - "CLAUDE.md"

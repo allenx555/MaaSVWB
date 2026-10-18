@@ -7,35 +7,6 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - "**"
-    paths:
-      - ".github/workflows/install.yml"
-      - "assets/**"
-      - "agent/**"
-      - "docs/release/**"
-      - "gui/**"
-      - "tools/**"
-      - "requirements*.txt"
-      - "maatools.config.mts"
-      - "**.py"
-      - "**.cs"
-      - "**.axaml"
-  pull_request:
-    branches:
-      - "**"
-    paths:
-      - ".github/workflows/install.yml"
-      - "assets/**"
-      - "agent/**"
-      - "docs/release/**"
-      - "gui/**"
-      - "tools/**"
-      - "requirements*.txt"
-      - "maatools.config.mts"
-      - "**.py"
-      - "**.cs"
-      - "**.axaml"
   workflow_dispatch:
 
 jobs:
