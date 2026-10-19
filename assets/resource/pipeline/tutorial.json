@@ -72,7 +72,7 @@
         "method": 4,
         "lower": [105, 90, 50],
         "upper": [240, 225, 195],
-        "count": 700,
+        "count": 400,
         "connected": true
     },
     "识别_教程主战者框左侧": {

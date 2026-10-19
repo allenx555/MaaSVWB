@@ -351,6 +351,29 @@ class SolutionRuntimeTests(unittest.TestCase):
         )
 
     @patch("runtime.puzzle_navigator.time.sleep")
+    def test_clipped_category_is_scrolled_before_reading_arrow(
+        self, _sleep: MagicMock
+    ) -> None:
+        backend, navigator, controller = self.make_backend([])
+        clipped = SimpleNamespace(x=79, y=574, w=60, h=25)
+        visible = SimpleNamespace(x=79, y=300, w=60, h=25)
+        navigator.find_in_scroll_list = MagicMock(
+            side_effect=[
+                SimpleNamespace(hit=True, box=clipped),
+                SimpleNamespace(hit=True, box=visible),
+            ]
+        )
+        backend.category_expanded = MagicMock(return_value=True)
+
+        self.assertTrue(navigator.activate_category(
+            {"display_name": "协作②", "pattern": "^协作②$", "scope": "list"},
+            (430, 260), (430, 570), 2, ".*熟练运用.*协作.*",
+        ))
+        backend.category_expanded.assert_called_once_with(visible)
+        controller.post_swipe.assert_called_once_with(430, 570, 430, 260, 900)
+        controller.post_click.assert_not_called()
+
+    @patch("runtime.puzzle_navigator.time.sleep")
     def test_expanded_category_is_not_clicked(self, _sleep: MagicMock) -> None:
         backend, navigator, controller = self.make_backend([])
         category_box = SimpleNamespace(x=79, y=240, w=105, h=23)

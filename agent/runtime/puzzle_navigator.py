@@ -178,6 +178,16 @@ class PuzzleNavigator:
                 LOGGER.error("未识别到盘面解密类别: %s", category["display_name"])
                 return False
             box = detail.box
+            # A title at the viewport's bottom can be visible while its arrow is
+            # clipped. Bring the whole header into view before reading its state;
+            # otherwise the fallback may find a same-named puzzle in another group.
+            if box.y + box.h > list_bottom[1]:
+                if not self.backend.swipe(
+                    *list_bottom, *list_top, LIST_SWIPE_DURATION_MS
+                ):
+                    return False
+                time.sleep(LIST_SWIPE_SETTLE_MS / 1000)
+                continue
             suffix_pattern = category.get("suffix_pattern")
             if suffix_pattern and not self._category_suffix_matches(
                 box, suffix_pattern

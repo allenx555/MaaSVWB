@@ -1,0 +1,111 @@
+{
+    "id": "spec_evolve_bishop_01",
+    "name": "学习进化主教吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "学习进化主教吧！",
+        "name_pattern": ".*学习进化主教.*",
+        "categories": [
+            {
+                "display_name": "盘面解谜",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "进化主教",
+                "pattern": "^进化主教$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 8
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "飞跃的姐妹入场",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 5000,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "evolve",
+            "label": "手动super进化",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 22000,
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 2
+            }
+        },
+        {
+            "action": "attack",
+            "label": "姐妹攻击五血随从，触发双击纹章",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 3,
+                "count": 3
+            }
+        },
+        {
+            "action": "attack",
+            "label": "姐妹第二击清右机械",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 2,
+                "count": 2
+            }
+        },
+        {
+            "action": "attack",
+            "label": "原有超进化随从清最后机械，获得双击",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "attack",
+            "label": "三攻完成斩杀",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

@@ -1,0 +1,139 @@
+{
+    "id": "spec_collaboration_2_01",
+    "name": "学习【协作】吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "学习【协作】吧！",
+        "name_pattern": ".*学习.*协作.*.*",
+        "categories": [
+            {
+                "display_name": "盘面解谜",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "协作②",
+                "pattern": "^协作(②|2)$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 8
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "须臾剑士提高协作至19",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 3,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "第二名须臾剑士提高协作至20",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 2,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "巴妮与巴隆召唤同名随从并直伤四点",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "evolve",
+            "label": "手动normal进化",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 15000,
+            "evolution_type": "normal",
+            "target": {
+                "type": "ally_follower",
+                "index": 3,
+                "count": 4
+            }
+        },
+        {
+            "action": "attack",
+            "label": "进化本体清除第一守护",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 3,
+            "ally_count": 4,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 4
+            }
+        },
+        {
+            "action": "attack",
+            "label": "未进化分身与第二守护交换",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 4,
+            "ally_count": 4,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 3
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "枪击两次各四点，清除仅余两名守护",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "attack",
+            "label": "须臾剑士一攻",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "attack",
+            "label": "第二名须臾剑士一攻斩杀",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

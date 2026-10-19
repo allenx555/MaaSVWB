@@ -1,0 +1,92 @@
+{
+    "id": "spec_buff_elf_02",
+    "name": "熟练运用增益精灵吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "熟练运用增益精灵吧！",
+        "name_pattern": ".*熟练运用增益精灵.*",
+        "categories": [
+            {
+                "display_name": "盘面解谜",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "增益精灵",
+                "pattern": "^增益精灵$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 8
+    },
+    "steps": [
+        {
+            "action": "evolve",
+            "label": "手动normal进化",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 15000,
+            "evolution_type": "normal",
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "使用进化触发加入的伊芙",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 2,
+            "hand_count": 2,
+            "expand_delay_ms": 1000,
+            "expand_hand": true
+        },
+        {
+            "action": "play_card",
+            "label": "爆能蒂亚强化全场",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "attack",
+            "label": "原蒂亚五攻",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "attack",
+            "label": "伊芙四攻斩杀",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

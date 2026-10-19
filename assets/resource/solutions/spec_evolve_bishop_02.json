@@ -1,0 +1,125 @@
+{
+    "id": "spec_evolve_bishop_02",
+    "name": "熟练运用进化主教吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "熟练运用进化主教吧！",
+        "name_pattern": ".*熟练运用进化主教.*",
+        "categories": [
+            {
+                "display_name": "盘面解谜",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "进化主教",
+                "pattern": "^进化主教$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 8
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "八费爆能露莉亚抽取七费以上随从，回复七能量",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 5000,
+            "hand_index": 1,
+            "hand_count": 3,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "吉尔内莉莎入场选择己方露莉亚，使其离场",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 3,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            },
+            "target_delay_ms": 1800,
+            "expand_hand": false
+        },
+        {
+            "action": "evolve",
+            "label": "手动super进化",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 15000,
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "select_target",
+            "label": "超进化效果选择吉尔内莉莎自己，变为五攻四血",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 12000,
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "attack",
+            "label": "先虹吸恢复生命再承受谢幕曲，获得双击",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 1,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 2
+            }
+        },
+        {
+            "action": "attack",
+            "label": "第二击清空敌场",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 1,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "解放奥义圣德芬五次二点全部命中主战者",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 3,
+            "expand_delay_ms": 1000,
+            "expand_hand": true
+        }
+    ]
+}
