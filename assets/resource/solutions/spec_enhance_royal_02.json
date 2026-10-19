@@ -1,0 +1,126 @@
+{
+    "id": "spec_enhance_royal_02",
+    "name": "熟练运用爆能强化皇家护卫吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "熟练运用爆能强化皇家护卫吧！",
+        "name_pattern": ".*熟练运用爆能强化皇家护卫.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "爆能强化皇家护卫",
+                "pattern": "^爆能强化皇家护卫$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 30
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "八费爆能使用惨烈的剑王，召唤三名不同能力士兵",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 6000,
+            "hand_index": 2,
+            "hand_count": 2,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "evolve",
+            "label": "手动super进化当前第1/4随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 15000,
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 4
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "爆能天剑深渊将左侧八血守护削至五血",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 3
+            }
+        },
+        {
+            "action": "attack",
+            "label": "必杀士兵交换最右九攻十一血守护",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 4,
+            "target": {
+                "type": "enemy_follower",
+                "index": 3,
+                "count": 3
+            }
+        },
+        {
+            "action": "attack",
+            "label": "重排后的虹吸士兵交换左侧五血守护并恢复生命",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 2
+            }
+        },
+        {
+            "action": "attack",
+            "label": "九攻超进化剑王清除最后守护并造成一点超进化伤害",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "attack",
+            "label": "五攻疾驰士兵完成斩杀",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

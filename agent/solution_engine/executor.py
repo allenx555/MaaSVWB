@@ -344,6 +344,24 @@ class SolutionExecutor:
         layout = self._require_layout(index)
         self._tap_target(layout, step.get("target"), index)
 
+    def _handle_select_hand_card(
+        self, _solution: Solution, step: dict, index: int
+    ) -> None:
+        """Choose a card in the central hand-selection dialog of a pending effect."""
+        layout = self._require_layout(index)
+        hand_index = self._positive_int(step.get("hand_index"), "hand_index", index)
+        count = self._positive_int(step.get("hand_count"), "hand_count", index)
+        source_count = self._positive_int(
+            step.get("source_hand_count", count), "source_hand_count", index
+        )
+        self._validate_hand_count(source_count, hand_index, index)
+        self._require_success(
+            self.backend.tap(*layout.indexed_point("hand_choices", count, hand_index)),
+            index,
+            "select_hand_card",
+        )
+        self._hand_expanded = False
+
     def _handle_select_choice(
         self, _solution: Solution, step: dict, index: int
     ) -> None:

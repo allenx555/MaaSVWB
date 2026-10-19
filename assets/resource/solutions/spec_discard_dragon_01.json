@@ -1,0 +1,79 @@
+{
+    "id": "spec_discard_dragon_01",
+    "name": "学习弃牌龙族吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "学习弃牌龙族吧！",
+        "name_pattern": ".*学习弃牌龙族.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "弃牌龙族",
+                "pattern": "^弃牌龙族$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 30
+    },
+    "steps": [
+        {
+            "action": "activate_amulet",
+            "label": "启动乙姬的宝扇，召唤近卫并进入舍弃选择",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 1800,
+            "amulet_index": 1,
+            "ally_count": 1
+        },
+        {
+            "action": "select_hand_card",
+            "label": "舍弃四费天刀授予，获得二费同名牌",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 1,
+            "hand_count": 2
+        },
+        {
+            "action": "play_card",
+            "label": "使用生成的二费天刀授予强化近卫",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "hand_index": 2,
+            "hand_count": 2,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 2
+            }
+        },
+        {
+            "action": "attack",
+            "label": "四攻近卫攻击主战者，护符仍占第一个卡位",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

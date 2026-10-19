@@ -270,6 +270,25 @@ class SolutionEngineTests(unittest.TestCase):
             ],
         )
 
+    def test_pending_hand_selection_checks_count_before_clicking(self) -> None:
+        solution = Solution.from_dict({
+            "id": "discard", "name": "discard", "category": "puzzle",
+            "reference_resolution": [1280, 720],
+            "steps": [{"action": "select_hand_card", "hand_index": 2, "hand_count": 2}],
+        })
+        backend = FakeBackend()
+        backend.hand_counts = [1]
+        with self.assertRaises(SolutionError):
+            SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(backend.calls, [])
+        backend.hand_counts = [2]
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(backend.calls, [("tap", 760, 360)])
+        solution.steps[0]["source_hand_count"] = 3
+        backend.hand_counts = [3]
+        SolutionExecutor(backend, layout=self.layout).execute(solution)
+        self.assertEqual(backend.calls[-1], ("tap", 760, 360))
+
     def test_targeted_spell_reexpands_hand_before_next_card(self) -> None:
         solution = Solution.from_dict(
             {

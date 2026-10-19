@@ -133,6 +133,83 @@
                             }
                         }
                     }
+                },
+                {
+                    "name": "spec_castorotte_02",
+                    "label": "熟练运用卡特斯罗特超越者吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_castorotte_02"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_enhance_royal_01",
+                    "label": "学习爆能强化皇家护卫吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_enhance_royal_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_enhance_royal_02",
+                    "label": "熟练运用爆能强化皇家护卫吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_enhance_royal_02"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_discard_dragon_01",
+                    "label": "学习弃牌龙族吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_discard_dragon_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_discard_dragon_02",
+                    "label": "熟练运用弃牌龙族吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_discard_dragon_02"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_amulet_bishop_1_01",
+                    "label": "学习护符主教吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_amulet_bishop_1_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_amulet_bishop_1_02",
+                    "label": "熟练运用护符主教吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_amulet_bishop_1_02"
+                            }
+                        }
+                    }
                 }
             ]
         },

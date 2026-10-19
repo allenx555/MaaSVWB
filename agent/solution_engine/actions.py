@@ -15,6 +15,7 @@ SUPPORTED_ACTIONS = frozenset(
         "attack",
         "select_target",
         "select_choice",
+        "select_hand_card",
         "evolve",
         "activate_amulet",
         "end_turn",

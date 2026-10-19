@@ -1,0 +1,190 @@
+{
+    "id": "spec_discard_dragon_02",
+    "name": "熟练运用弃牌龙族吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "熟练运用弃牌龙族吧！",
+        "name_pattern": ".*熟练运用弃牌龙族.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "弃牌龙族",
+                "pattern": "^弃牌龙族$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 30
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "使用断头的斩姬，进入舍弃手牌选择",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 1800,
+            "hand_index": 1,
+            "hand_count": 4,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "select_hand_card",
+            "label": "舍弃古旧天刀并召唤其零攻二血本体，斩姬生成两张赤流",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 1,
+            "hand_count": 3,
+            "source_hand_count": 4
+        },
+        {
+            "action": "evolve",
+            "label": "手动super进化当前第2/2随从",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 15000,
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 2
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "第1次使用赤流",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 1800,
+            "hand_index": 4,
+            "hand_count": 7,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "select_hand_card",
+            "label": "舍弃最右天刀深渊，触发全场及主战者一点伤害并恢复生命",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 6,
+            "hand_count": 6,
+            "source_hand_count": 7
+        },
+        {
+            "action": "select_target",
+            "label": "赤流清除当前第一个敌方随从（当前共4个）",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 4
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "第2次使用赤流",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 1800,
+            "hand_index": 3,
+            "hand_count": 5,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "select_hand_card",
+            "label": "舍弃最右天刀深渊，触发全场及主战者一点伤害并恢复生命",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 4,
+            "hand_count": 4,
+            "source_hand_count": 5
+        },
+        {
+            "action": "select_target",
+            "label": "赤流清除当前第一个敌方随从（当前共3个）",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 3
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "第3次使用赤流",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 1800,
+            "hand_index": 1,
+            "hand_count": 3,
+            "expand_delay_ms": 1000,
+            "expand_hand": true
+        },
+        {
+            "action": "select_hand_card",
+            "label": "舍弃最右天刀深渊，触发全场及主战者一点伤害并恢复生命",
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 2,
+            "hand_count": 2,
+            "source_hand_count": 3
+        },
+        {
+            "action": "select_target",
+            "label": "第三次赤流清除当前左侧最后一名守护（敌方仍有两个随从）",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4000,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 2
+            }
+        },
+        {
+            "action": "attack",
+            "label": "超进化古旧天刀以毁灭清除七血随从并造成一点超进化主战者伤害",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "attack",
+            "label": "五攻疾驰斩姬攻击主战者完成斩杀",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 2,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

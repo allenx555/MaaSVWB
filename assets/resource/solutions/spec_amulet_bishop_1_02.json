@@ -1,0 +1,157 @@
+{
+    "id": "spec_amulet_bishop_1_02",
+    "name": "熟练运用护符主教吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "熟练运用护符主教吧！",
+        "name_pattern": ".*熟练运用护符主教.*",
+        "categories": [
+            {
+                "display_name": "盘面解密",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "护符主教1",
+                "pattern": "^护符主教(①|1)$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 8
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "放置第一个羽翼石像",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "hand_index": 1,
+            "hand_count": 4,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "activate_amulet",
+            "label": "启动一次石像消耗一能量，使后续五费牌进入结晶条件",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2000,
+            "amulet_index": 1,
+            "ally_count": 1
+        },
+        {
+            "action": "play_card",
+            "label": "天书深渊破坏石像，召唤猎鹰并回收同名法术",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 2,
+            "hand_count": 3,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "ally_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "放置第二个羽翼石像",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "hand_index": 1,
+            "hand_count": 3,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "天书深渊破坏第二个石像，获得第二只猎鹰",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 2,
+            "hand_count": 2,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 2
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "四能量时以二费结晶使用崇奉的信者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "hand_index": 1,
+            "hand_count": 2,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "天书深渊破坏结晶，召唤信者并恢复生命",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 4500,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "ally_follower",
+                "index": 3,
+                "count": 3
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "天书深渊清除唯一守护并追加主战者伤害",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "attack",
+            "label": "第一只猎鹰攻击主战者",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 1,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "attack",
+            "label": "第二只猎鹰攻击主战者完成剩余两点斩杀",
+            "change_roi": "battle_board",
+            "post_timeout_ms": 10000,
+            "after_ms": 2500,
+            "attacker_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}
