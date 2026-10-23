@@ -15,7 +15,12 @@ sys.path.insert(0, str(PROJECT_ROOT / "agent"))
 
 from runtime.backend import MaaBackend  # noqa: E402
 from runtime.puzzle_navigator import PuzzleNavigator  # noqa: E402
-from runtime.runner import reset_puzzle_for_debug, wait_for_puzzle_list  # noqa: E402
+from runtime.runner import (  # noqa: E402
+    dismiss_puzzle_goal,
+    reset_puzzle_for_debug,
+    wait_for_puzzle_list,
+)
+from solution_engine.models import SolutionError  # noqa: E402
 from actions.execute_solution import ExecuteSolution  # noqa: E402
 from solution_engine.layout import BoardLayout  # noqa: E402
 
@@ -28,6 +33,37 @@ class _SuccessfulJob:
 
 
 class SolutionRuntimeTests(unittest.TestCase):
+    @patch("runtime.runner.time.sleep")
+    def test_puzzle_goal_is_closed_only_when_visible(self, sleep: MagicMock) -> None:
+        backend = MagicMock()
+        layout = BoardLayout.load(
+            PROJECT_ROOT / "assets/resource/layouts/default.json"
+        )
+        backend.verify.return_value = False
+        dismiss_puzzle_goal(backend, layout)
+        backend.tap.assert_not_called()
+        sleep.assert_not_called()
+
+        backend.verify.return_value = True
+        backend.tap.return_value = True
+        backend.wait_recognition_gone.return_value = True
+        dismiss_puzzle_goal(backend, layout)
+        backend.tap.assert_called_once_with(640, 370)
+        backend.wait_recognition_gone.assert_called_once_with(
+            "识别_盘面解密目标提示", 5_000, 250
+        )
+        sleep.assert_called_once_with(1.0)
+
+    def test_puzzle_goal_must_disappear_before_solution(self) -> None:
+        backend = MagicMock()
+        layout = MagicMock()
+        layout.fixed_point.return_value = (640, 370)
+        backend.verify.return_value = True
+        backend.tap.return_value = True
+        backend.wait_recognition_gone.return_value = False
+        with self.assertRaisesRegex(SolutionError, "目标提示未消失"):
+            dismiss_puzzle_goal(backend, layout)
+
     def make_backend(self, hits: list[bool]) -> tuple[Any, PuzzleNavigator, Any]:
         controller = SimpleNamespace(
             cached_image=object(),

@@ -1,12 +1,12 @@
 # 关卡解法进度列表
 
-更新日期：2026-10-19。
+更新日期：2026-10-23。
 
-盘面解密与对战教程共 **117** 关：已完成 **14** 关，未完成 **103** 关。
+盘面解密与对战教程共 **117** 关：已完成 **26** 关，未完成 **91** 关。
 
 | 类型 | 总数 | 已完成 | 未完成 |
 | --- | ---: | ---: | ---: |
-| 盘面解密 | 67 | 13 | 54 |
+| 盘面解密 | 67 | 25 | 42 |
 | 对战教程 | 50 | 1 | 49 |
 
 本列表记录解法制作进度：已完成表示已提供对应类别的正式解法 JSON，未完成表示尚无正式解法。
@@ -14,10 +14,11 @@
 关卡来源为 `assets/catalog/puzzle_catalog.json` 与 `assets/catalog/tutorial_catalog.json`，
 解法来源为 `assets/resource/solutions/`。新增、移除解法或调整目录时，同步更新本列表。
 地城试炼由 Battle Profile 驱动，不属于本列表的逐关固定解法。
+花醉游戏视频中的旧芙莉莲联动七题当前无入口，仅保留来源及不可验收记录，不纳入正式解法或上述目录统计。
 
 ## 盘面解密
 
-### 已完成（13）
+### 已完成（25）
 
 | 系列 | 分组 | 关卡 | ID | 解法 |
 | --- | --- | --- | --- | --- |
@@ -34,8 +35,20 @@
 | 指定系列 | 弃牌龙族 | 熟练运用弃牌龙族吧！ | `spec_discard_dragon_02` | [JSON](../../assets/resource/solutions/spec_discard_dragon_02.json) |
 | 指定系列 | 护符主教1 | 学习护符主教吧！ | `spec_amulet_bishop_1_01` | [JSON](../../assets/resource/solutions/spec_amulet_bishop_1_01.json) |
 | 指定系列 | 护符主教1 | 熟练运用护符主教吧！ | `spec_amulet_bishop_1_02` | [JSON](../../assets/resource/solutions/spec_amulet_bishop_1_02.json) |
+| 指定系列 | 增益精灵 | 学习增益精灵吧！ | `spec_buff_elf_01` | [JSON](../../assets/resource/solutions/spec_buff_elf_01.json) |
+| 指定系列 | 增益精灵 | 熟练运用增益精灵吧！ | `spec_buff_elf_02` | [JSON](../../assets/resource/solutions/spec_buff_elf_02.json) |
+| 指定系列 | 协作2 | 学习【协作】吧！ | `spec_collaboration_2_01` | [JSON](../../assets/resource/solutions/spec_collaboration_2_01.json) |
+| 指定系列 | 协作2 | 熟练运用【协作】吧！ | `spec_collaboration_2_02` | [JSON](../../assets/resource/solutions/spec_collaboration_2_02.json) |
+| 指定系列 | 进化主教 | 学习进化主教吧！ | `spec_evolve_bishop_01` | [JSON](../../assets/resource/solutions/spec_evolve_bishop_01.json) |
+| 指定系列 | 进化主教 | 熟练运用进化主教吧！ | `spec_evolve_bishop_02` | [JSON](../../assets/resource/solutions/spec_evolve_bishop_02.json) |
+| 指定系列 | 协作1 | 学习【协作】吧！ | `spec_collaboration_1_01` | [JSON](../../assets/resource/solutions/spec_collaboration_1_01.json) |
+| 指定系列 | 协作1 | 熟练运用【协作】吧！ | `spec_collaboration_1_02` | [JSON](../../assets/resource/solutions/spec_collaboration_1_02.json) |
+| 指定系列 | 罗德欧主教 | 学习罗德欧主教吧！ | `spec_rodeo_bishop_01` | [JSON](../../assets/resource/solutions/spec_rodeo_bishop_01.json) |
+| 指定系列 | 罗德欧主教 | 熟练运用罗德欧主教吧！ | `spec_rodeo_bishop_02` | [JSON](../../assets/resource/solutions/spec_rodeo_bishop_02.json) |
+| 指定系列 | 中速梦魇 | 学习中速梦魇吧！ | `spec_midrange_nightmare_01` | [JSON](../../assets/resource/solutions/spec_midrange_nightmare_01.json) |
+| 指定系列 | 中速梦魇 | 熟练运用中速梦魇吧！ | `spec_midrange_nightmare_02` | [JSON](../../assets/resource/solutions/spec_midrange_nightmare_02.json) |
 
-### 未完成（54）
+### 未完成（42）
 
 | 系列 | 分组 | 关卡 | ID | 解法 |
 | --- | --- | --- | --- | --- |
@@ -48,18 +61,6 @@
 | 指定系列 | 基本能力2 | 学习应对【威慑】的方法吧！ | `spec_basic_2_03` | 待制作 |
 | 指定系列 | 基本能力2 | 学习应对【灵气】的方法吧！ | `spec_basic_2_04` | 待制作 |
 | 指定系列 | 基本能力2 | 学习应对【屏障】的方法吧！ | `spec_basic_2_05` | 待制作 |
-| 指定系列 | 增益精灵 | 学习增益精灵吧！ | `spec_buff_elf_01` | 待制作 |
-| 指定系列 | 增益精灵 | 熟练运用增益精灵吧！ | `spec_buff_elf_02` | 待制作 |
-| 指定系列 | 协作2 | 学习【协作】吧！ | `spec_collaboration_2_01` | 待制作 |
-| 指定系列 | 协作2 | 熟练运用【协作】吧！ | `spec_collaboration_2_02` | 待制作 |
-| 指定系列 | 进化主教 | 学习进化主教吧！ | `spec_evolve_bishop_01` | 待制作 |
-| 指定系列 | 进化主教 | 熟练运用进化主教吧！ | `spec_evolve_bishop_02` | 待制作 |
-| 指定系列 | 协作1 | 学习【协作】吧！ | `spec_collaboration_1_01` | 待制作 |
-| 指定系列 | 协作1 | 熟练运用【协作】吧！ | `spec_collaboration_1_02` | 待制作 |
-| 指定系列 | 罗德欧主教 | 学习罗德欧主教吧！ | `spec_rodeo_bishop_01` | 待制作 |
-| 指定系列 | 罗德欧主教 | 熟练运用罗德欧主教吧！ | `spec_rodeo_bishop_02` | 待制作 |
-| 指定系列 | 中速梦魇 | 学习中速梦魇吧！ | `spec_midrange_nightmare_01` | 待制作 |
-| 指定系列 | 中速梦魇 | 熟练运用中速梦魇吧！ | `spec_midrange_nightmare_02` | 待制作 |
 | 指定系列 | 奥义 | 学习【奥义】吧！ | `spec_ougi_01` | 待制作 |
 | 指定系列 | 奥义 | 熟练运用【奥义】吧！ | `spec_ougi_02` | 待制作 |
 | 指定系列 | 奥义 | 享受【奥义】吧！ | `spec_ougi_03` | 待制作 |

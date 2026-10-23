@@ -10,6 +10,7 @@ from pathlib import Path
 from maa.context import Context
 
 from pipeline_nodes import (
+    PUZZLE_GOAL,
     PUZZLE_LIST,
     PUZZLE_REWARD,
     TUTORIAL_CONFIRM,
@@ -106,6 +107,19 @@ def reset_puzzle_for_debug(backend: MaaBackend, layout: BoardLayout) -> None:
     if not backend.tap(*layout.fixed_point("puzzle_reset")):
         raise SolutionError("调试重置盘面失败")
     time.sleep(1_200 / 1000)
+
+
+def dismiss_puzzle_goal(backend: MaaBackend, layout: BoardLayout) -> None:
+    """关闭新入场的中央目标提示，避免首个战斗手势被提示吞掉。"""
+    if not backend.verify(PUZZLE_GOAL):
+        return
+    LOGGER.info("[开场] 关闭盘面解谜目标提示")
+    if not backend.tap(*layout.fixed_point("puzzle_goal_dismiss")):
+        raise SolutionError("关闭盘面解谜目标提示失败")
+    if not backend.wait_recognition_gone(PUZZLE_GOAL, 5_000, 250):
+        raise SolutionError("盘面解谜目标提示未消失")
+    # OCR 文字先消失，淡出遮罩仍会吞掉紧接着的拖动。
+    time.sleep(1.0)
 
 
 @lru_cache(maxsize=4)
@@ -253,6 +267,8 @@ def run_solution(
         ):
             raise SolutionError("进入关卡后未能识别到可操作盘面")
         if should_sync_opening:
+            if solution.category == "puzzle":
+                dismiss_puzzle_goal(backend, layout)
             LOGGER.info("[开场] 已进入可操作状态")
         elif solution.category != "tutorial":
             LOGGER.info("[调试] 从第 %d 步继续，跳过开场状态同步", start_step)

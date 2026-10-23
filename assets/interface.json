@@ -212,6 +212,50 @@
                     }
                 },
                 {
+                    "name": "spec_collaboration_1_01",
+                    "label": "学习【协作】吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_collaboration_1_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_collaboration_1_02",
+                    "label": "熟练运用【协作】吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_collaboration_1_02"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_rodeo_bishop_01",
+                    "label": "学习罗德欧主教吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_rodeo_bishop_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_rodeo_bishop_02",
+                    "label": "熟练运用罗德欧主教吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_rodeo_bishop_02"
+                            }
+                        }
+                    }
+                },
+                {
                     "name": "spec_enhance_royal_01",
                     "label": "学习爆能强化皇家护卫吧！",
                     "pipeline_override": {
@@ -273,6 +317,28 @@
                         "执行解法": {
                             "custom_action_param": {
                                 "solution": "spec_amulet_bishop_1_02"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_midrange_nightmare_01",
+                    "label": "学习中速梦魇吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_midrange_nightmare_01"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "spec_midrange_nightmare_02",
+                    "label": "熟练运用中速梦魇吧！",
+                    "pipeline_override": {
+                        "执行解法": {
+                            "custom_action_param": {
+                                "solution": "spec_midrange_nightmare_02"
                             }
                         }
                     }

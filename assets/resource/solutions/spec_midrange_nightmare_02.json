@@ -1,0 +1,150 @@
+{
+    "id": "spec_midrange_nightmare_02",
+    "name": "熟练运用中速梦魇吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "熟练运用中速梦魇吧！",
+        "name_pattern": ".*熟练运用中速梦(魇|魔).*",
+        "categories": [
+            {
+                "display_name": "盘面解谜",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "中速梦魇",
+                "pattern": "^中速梦(魇|魔)$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 12
+    },
+    "steps": [
+        {
+            "action": "play_card",
+            "label": "栽培者入场，由已有纹章自动普通进化",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 4,
+            "hand_count": 4,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "attack",
+            "label": "三攻栽培者与三血守护交换，谢幕加入怨灵",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 1,
+            "ally_count": 1,
+            "target": {
+                "type": "enemy_follower",
+                "index": 1,
+                "count": 1
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "使用谢幕怨灵，由纹章自动普通进化",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 4,
+            "hand_count": 4,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "使用瞑地的陵园，墓场加二",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 3,
+            "hand_count": 3,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "activate_amulet",
+            "label": "启动陵园，召唤两只怨灵",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "amulet_index": 2,
+            "ally_count": 2
+        },
+        {
+            "action": "evolve",
+            "label": "手动超进化中间一只召唤的怨灵至四攻",
+            "after_ms": 15000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 3
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "蛇神之怒对敌主战者造成三点伤害",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 1,
+            "hand_count": 2,
+            "expand_delay_ms": 1000,
+            "target": {
+                "type": "enemy_leader"
+            },
+            "target_delay_ms": 1500
+        },
+        {
+            "action": "attack",
+            "label": "左侧三攻怨灵攻击主战者",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 1,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "attack",
+            "label": "中间四攻怨灵攻击主战者",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "attack",
+            "label": "右侧一攻怨灵斩杀",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 3,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

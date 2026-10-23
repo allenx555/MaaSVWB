@@ -1,0 +1,113 @@
+{
+    "id": "spec_midrange_nightmare_01",
+    "name": "学习中速梦魇吧！",
+    "category": "puzzle",
+    "reference_resolution": [
+        1280,
+        720
+    ],
+    "navigation": {
+        "display_name": "学习中速梦魇吧！",
+        "name_pattern": ".*学习中速梦(魇|魔).*",
+        "categories": [
+            {
+                "display_name": "盘面解谜",
+                "pattern": "盘面解(密|谜)|盤面解(密|謎)",
+                "scope": "tab"
+            },
+            {
+                "display_name": "指定系列",
+                "pattern": "指定系列",
+                "scope": "tab"
+            },
+            {
+                "display_name": "中速梦魇",
+                "pattern": "^中速梦(魇|魔)$",
+                "scope": "list"
+            }
+        ],
+        "entry_wait_ms": 3500,
+        "search_swipes": 12
+    },
+    "steps": [
+        {
+            "action": "attack",
+            "label": "栽培者先攻击主战者至六血",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 1,
+            "ally_count": 1,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "使用当前七费米路缇欧，保留两点能量",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 2,
+            "hand_count": 2,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "evolve",
+            "label": "手动超进化米路缇欧，破坏栽培者并获得纹章与第二张怨灵",
+            "after_ms": 15000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "evolution_type": "super",
+            "target": {
+                "type": "ally_follower",
+                "index": 2,
+                "count": 2
+            }
+        },
+        {
+            "action": "play_card",
+            "label": "使用第一张怨灵，纹章使其自动普通进化",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 1,
+            "hand_count": 2,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "play_card",
+            "label": "使用第二张怨灵，纹章使其自动普通进化",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "hand_index": 1,
+            "hand_count": 1,
+            "expand_delay_ms": 1000
+        },
+        {
+            "action": "attack",
+            "label": "第一只三攻怨灵攻击主战者",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 2,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        },
+        {
+            "action": "attack",
+            "label": "第二只三攻怨灵斩杀",
+            "after_ms": 5000,
+            "change_roi": "hand_and_board",
+            "post_timeout_ms": 10000,
+            "attacker_index": 3,
+            "ally_count": 3,
+            "target": {
+                "type": "enemy_leader"
+            }
+        }
+    ]
+}

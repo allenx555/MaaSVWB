@@ -15,6 +15,7 @@ TUTORIAL_CONFIRM_ENABLED = "识别_对战教程决定可用"
 
 PUZZLE_LIST = "识别_盘面解密列表"
 PUZZLE_REWARD = "识别_盘面解密奖励领取"
+PUZZLE_GOAL = "识别_盘面解密目标提示"
 PUZZLE_NAME = "识别_盘面解密名称"
 PUZZLE_COMPLETED = "识别_盘面解密完成标记"
 PUZZLE_REWARD_CLAIMED = "识别_盘面解密已领取"
