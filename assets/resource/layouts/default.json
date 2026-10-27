@@ -19,6 +19,7 @@
         "mulligan_replace_anchor": [640, 210],
         "dungeon_stage_first": [640, 400],
         "dungeon_deck_decide": [770, 550],
+        "dungeon_replay": [1110, 465],
         "extra_energy": [1165, 515],
         "end_turn": [1170, 320]
     },

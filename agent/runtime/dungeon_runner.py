@@ -66,20 +66,20 @@ class DungeonRunner:
 
             if action is DungeonSettlementAction.RETURN_TO_DUNGEON:
                 if not self.backend.tap_recognition(DUNGEON_RETURN, 15_000):
-                    raise SolutionError("达到目标胜场后未能点击返回地城")
+                    raise SolutionError("达到目标胜场后未能点击返回乐园（返回地城）")
                 LOGGER.info("地城目标已完成：%d 场胜利", self.session.victories)
                 return
             if action is DungeonSettlementAction.STOP:
                 if outcome is BattleOutcome.UNKNOWN:
                     raise SolutionError("无法确认战斗结算状态，已安全停止")
                 raise SolutionError("连续失败超过两次，已停止地城试炼")
-            if not self.backend.tap_recognition(DUNGEON_REPLAY, 15_000):
-                raise SolutionError("结算后未能点击再战")
-            time.sleep(2.0)
+            # The entry loop owns replay clicks and verifies the next battle.
+            # A successful controller click alone does not confirm navigation.
 
     def _enter_or_resume_battle(self) -> None:
         deadline = time.monotonic() + 120
         stage_clicked = False
+        replay_attempts = 0
         while time.monotonic() < deadline:
             if self.backend.is_stopping():
                 raise SolutionError("地城试炼已停止")
@@ -89,6 +89,17 @@ class DungeonRunner:
                 continue
             if self.battle_runner.is_start_state(frame):
                 return
+            if self.backend.verify(DUNGEON_REPLAY, frame):
+                if replay_attempts >= 3:
+                    raise SolutionError("点击再战 3 次后仍停留在结算页，未能进入下一场")
+                replay_attempts += 1
+                LOGGER.info("[连战] 点击再战按钮中心（第 %d/3 次），等待下一场", replay_attempts)
+                # Settlement animation can move the OCR text outside the button.
+                # Use OCR only as a gate, and keep the stable hit target in layout.
+                if not self.backend.tap(*self.layout.fixed_point("dungeon_replay")):
+                    raise SolutionError("结算后点击再战失败")
+                time.sleep(3.0)
+                continue
             if self.backend.verify(DUNGEON_DECK_CONFIRM, frame):
                 LOGGER.info("[开局] 使用游戏当前牌组并点击决定")
                 if not self.backend.tap(*self.layout.fixed_point("dungeon_deck_decide")):
