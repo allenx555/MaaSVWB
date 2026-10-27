@@ -17,6 +17,7 @@ from battle_engine.policy import BattlePolicy
 from pipeline_nodes import (
     BATTLE_DEFEAT,
     BATTLE_END_CONFIRM,
+    BATTLE_EXTRA_ENERGY,
     BATTLE_HAND_NAMES,
     BATTLE_MULLIGAN,
     BATTLE_MULLIGAN_NAMES,
@@ -227,23 +228,36 @@ class BattleRunner:
             if outcome is not None:
                 return outcome
             if not self._end_turn():
-                raise SolutionError("点击结束回合失败")
+                raise SolutionError("结束回合后未确认回合切换，已停止")
             previous_maximum = state.maximum_energy
             time.sleep(1.0)
         raise SolutionError("战斗超过 50 个己方回合，已安全停止")
 
     def _end_turn(self) -> bool:
-        if not self.backend.tap(*self.layout.fixed_point("end_turn")):
-            return False
-        time.sleep(0.7)
-        frame = self.backend.capture_frame()
-        if frame is not None and self.backend.verify(BATTLE_END_CONFIRM, frame):
-            LOGGER.info("[回合] 仍有可用卡牌，确认结束回合")
-            if not self.backend.tap_recognition(BATTLE_END_CONFIRM, 3_000):
+        for attempt in range(1, 4):
+            if self.backend.is_stopping():
                 return False
-            if not self.backend.wait_recognition_gone(BATTLE_END_CONFIRM, 5_000, 250):
+            if not self.backend.tap(*self.layout.fixed_point("end_turn")):
                 return False
-        return True
+            time.sleep(0.7)
+            # Input can be swallowed by the preceding card/attack animation.
+            # Only hand over to the next-turn waiter after the turn button leaves.
+            for _ in range(10):
+                if self.backend.is_stopping():
+                    return False
+                frame = self.backend.capture_frame()
+                if frame is not None:
+                    if self.backend.verify(BATTLE_END_CONFIRM, frame):
+                        LOGGER.info("[回合] 仍有可用卡牌，确认结束回合")
+                        if not self.backend.tap_recognition(BATTLE_END_CONFIRM, 3_000):
+                            return False
+                        if not self.backend.wait_recognition_gone(BATTLE_END_CONFIRM, 5_000, 250):
+                            return False
+                    elif not self.backend.verify(BATTLE_PLAYER_TURN, frame):
+                        return True
+                time.sleep(0.5)
+            LOGGER.warning("[回合] 点击后仍未结束己方回合（第 %d/3 次）", attempt)
+        return False
 
     def _wait_for_turn_or_settlement(
         self,
@@ -303,6 +317,7 @@ class BattleRunner:
     def _execute_turn(self) -> BattleOutcome | None:
         self._hand_expanded = False
         self._turn_followers = None
+        self._try_use_extra_energy()
         if self.policy.profile.attack.resume_play:
             return self._execute_interleaved_turn()
         if self.policy.profile.evolution.enabled and self.policy.profile.evolution.after_play:
@@ -324,6 +339,31 @@ class BattleRunner:
 
         self._attack_phase()
         return None
+
+    def _try_use_extra_energy(self) -> bool:
+        """快梦在回合开始时使用亮起的额外能量；后续出牌重新读能量。"""
+        if not self.policy.strategy.use_extra_energy:
+            return False
+        if self.backend.is_stopping():
+            raise SolutionError("战斗已停止")
+        frame = self.backend.capture_frame()
+        if frame is None or not self.backend.verify(BATTLE_EXTRA_ENERGY, frame):
+            return False
+        before = self.backend.read_energy_points()
+        if before is None:
+            return False
+        if not self.backend.tap(*self.layout.fixed_point("extra_energy")):
+            raise SolutionError("点击额外能量点失败")
+        # 点击只发出一次；等待实际能量增加，避免动画期间使用旧费用规划。
+        for _ in range(10):
+            if self.backend.is_stopping():
+                raise SolutionError("战斗已停止")
+            time.sleep(0.5)
+            after = self.backend.read_energy_points()
+            if after is not None and after[0] > before[0]:
+                LOGGER.info("[回合] 使用额外能量点：%d → %d", before[0], after[0])
+                return True
+        raise SolutionError("使用额外能量点后未确认能量增加，已停止")
 
     def _current_outcome(self) -> BattleOutcome | None:
         if self._turn_session is not None and self._turn_session.outcome is not None:

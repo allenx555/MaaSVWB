@@ -3,7 +3,7 @@
   "schema_version": 1,
   "id": "aggro_nightmare",
   "name": "无限制快攻梦魇",
-  "description": "地城快梦规则：起手有一费则全留，否则全换；整手规划尽量用满费用，同等费用按卡牌优先级出牌；自动普通进化并优先疾驰随从。",
+  "description": "地城快梦规则：起手有一费则全留，否则全换；额外能量点可用就用；整手规划尽量用满费用，同等费用按卡牌优先级出牌；自动普通进化并优先疾驰随从。",
   "strategy": "aggro_nightmare",
   "play_mode": "maximize_energy",
   "deck": [

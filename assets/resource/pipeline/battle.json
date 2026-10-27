@@ -18,6 +18,13 @@
         "expected": ["结束", "結束"],
         "threshold": 0.25
     },
+    "识别_基础战斗额外能量可用": {
+        "recognition": "TemplateMatch",
+        "roi": [1060, 480, 210, 80],
+        "template": "battle/extra_energy_available.png",
+        "method": 3,
+        "threshold": 0.95
+    },
     "识别_基础战斗结束回合确认": {
         "recognition": "OCR",
         "roi": [650, 500, 250, 100],

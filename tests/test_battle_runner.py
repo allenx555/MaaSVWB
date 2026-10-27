@@ -116,6 +116,15 @@ class _HandObservationBackend:
         return self.tap_succeeds
 
 class _EvolutionBackend:
+    def is_stopping(self) -> bool:
+        return False
+
+    def capture_frame(self):
+        return object()
+
+    def verify(self, _node, _frame) -> bool:
+        return False
+
     def __init__(
         self,
         ally_count: int,
@@ -141,6 +150,56 @@ class _EvolutionBackend:
 
 
 class BattleRunnerTests(unittest.TestCase):
+    def test_extra_energy_is_used_once_before_planning_with_updated_energy(self):
+        backend = MagicMock(spec=MaaBackend)
+        backend.is_stopping.return_value = False
+        backend.verify.return_value = True
+        backend.tap.return_value = True
+        backend.read_energy_points.side_effect = [(0, 1), None, (1, 1), (1, 1)]
+        runner = self._runner_with_backend(backend)
+        energies = []
+        with (
+            patch("runtime.battle_runner.time.sleep"),
+            patch.object(runner, "_play_cards", side_effect=lambda: energies.append(backend.read_energy_points())),
+            patch.object(runner, "_try_evolve_after_play"),
+            patch.object(runner, "_attack_phase"),
+        ):
+            runner._execute_turn()
+        backend.tap.assert_called_once_with(*runner.layout.fixed_point("extra_energy"))
+        self.assertEqual(energies, [(1, 1)])
+
+    def test_extra_energy_unavailable_or_unreadable_does_not_click(self):
+        for available, energy in ((False, (1, 1)), (True, None)):
+            with self.subTest(available=available, energy=energy):
+                backend = MagicMock(spec=MaaBackend)
+                backend.is_stopping.return_value = False
+                backend.verify.return_value = available
+                backend.read_energy_points.return_value = energy
+                runner = self._runner_with_backend(backend)
+                self.assertFalse(runner._try_use_extra_energy())
+                backend.tap.assert_not_called()
+
+    def test_generic_strategy_does_not_check_or_use_extra_energy(self):
+        backend = MagicMock(spec=MaaBackend)
+        runner = self._runner_with_backend(backend)
+        runner.policy = BattlePolicy(replace(runner.policy.profile, strategy="generic"), runner.catalog)
+        self.assertFalse(runner._try_use_extra_energy())
+        backend.capture_frame.assert_not_called()
+        backend.tap.assert_not_called()
+
+    def test_unconfirmed_extra_energy_stops_without_repeated_clicks_or_playing(self):
+        backend = MagicMock(spec=MaaBackend)
+        backend.is_stopping.return_value = False
+        backend.verify.return_value = True
+        backend.tap.return_value = True
+        backend.read_energy_points.return_value = (1, 1)
+        runner = self._runner_with_backend(backend)
+        with patch("runtime.battle_runner.time.sleep"), patch.object(runner, "_play_cards") as play:
+            with self.assertRaisesRegex(SolutionError, "未确认能量增加"):
+                runner._execute_turn()
+        backend.tap.assert_called_once()
+        play.assert_not_called()
+
     def test_play_then_energy_failure_does_not_double_count_or_wait_for_turn_end(self):
         backend = MagicMock(spec=MaaBackend)
         backend.read_energy_points.side_effect = [(1, 1), None]
